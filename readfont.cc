@@ -1,6 +1,8 @@
 #include <iostream>
 #include <array>
 #include <cvd/image_io.h>
+#include <cvd/gl_helpers.h>
+#include <cvd/videodisplay.h>
 #include <tag/printf.h>
 using namespace std;
 using namespace tag;
@@ -19,14 +21,20 @@ class Font
 	enum Mode
 	{
 		Normal,
-		Upper,
-		Lower,
 		Graphics,
 		ThinGraphics
 	};
+	
+	enum Height
+	{
+		Standard,
+		Upper,
+		Lower
+	};
+
 
 	Font(string filename);
-	const Image<bool>& get_glyph(int i, Mode m)
+	const Image<bool>& get_glyph(int i, Mode m, Height h)
 	{
 		return glyphs[i][m];
 	}
@@ -83,15 +91,7 @@ Font::Font(string name)
 			out[y][8] = (bool)(c&2);
 			out[y][9] = (bool)(c&1);
 		}
-		Image<bool> upper(ImageRef(10,18));
-		Image<bool> lower(ImageRef(10,18));
 		
-		for(int y=0; y < h; y++)
-			for(int x=0; x < w; x++)
-			{	
-				upper[y][x] = out[y/2][x];
-				upper[y][x] = out[y/2][x];
-			}
 		Image<bool> graphics, thingraphics;
 		//Graphics blocks have bit 5 set...
 		if(i & 32 )
@@ -123,9 +123,77 @@ Font::Font(string name)
 		}
 
 		glyphs[i][Normal] = out;
-		glyphs[i][Upper] = upper;
-		glyphs[i][Lower] = upper;
 		glyphs[i][Graphics] = graphics;
 		glyphs[i][ThinGraphics] = thingraphics;
 	}
 }
+
+
+int main()
+{
+	Font f("teletext.fnt");
+	int w=40;
+	int h=25;
+
+	Image<byte> text(ImageRef(w,h));
+	Image<byte> screen(text.size().dotstar(ImageRef(f.w, f.h)));
+
+	Rgb<byte> fg, bg;
+	
+	for(int r=0; r < h; r++)
+	{
+		Font::Mode m=Font::Normal;
+		Rgb<byte> fg(255,255,255);
+		Rgb<byte> bg(0,0,0);
+
+
+		for(int c=0; c < w; c++)
+		{
+			int c = text[r][c];
+			const Image<bool> *g;
+
+			if(c < 32)
+			{
+				//Blank glyph
+
+				g = f.get_glyph(32,Normal,Normal);
+				if(c>=1 && c <=7)
+				{
+					fg.red   = (bool)(c&1) * 255;
+					fg.green = (bool)(c&2) * 255;
+					fg.blue  = (bool)(c&4) * 255;
+				}
+				else if(c >=17 && c <= 23)
+				{
+					fg.red   = (bool)(c&1) * 255;
+					fg.green = (bool)(c&2) * 255;
+					fg.blue  = (bool)(c&4) * 255;
+					m = Font::Graphics;
+				}
+				else if(c == 25)
+				{
+					//Switch graphics type
+					if(m != Font::Normal)
+						m = Fone::Graphics;
+				}
+				else if(c == 26)
+				{
+					//Switch graphics type
+					if(m != Font::Normal)
+						m = Fone::ThinGraphics;
+				}
+
+
+
+
+
+
+
+		}
+	}
+
+
+
+}
+
+
