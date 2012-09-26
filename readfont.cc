@@ -139,57 +139,97 @@ int main()
 	Image<byte> screen(text.size().dotstar(ImageRef(f.w, f.h)));
 
 	Rgb<byte> fg, bg;
-	
+
+	bool double_height_bottom=false;
 	for(int r=0; r < h; r++)
 	{
-		Font::Mode m=Font::Normal;
+		bool separated_graphics=false;
+		bool hold_graphics=false;
+		bool graphics_on=false;
+		bool double_height=false;
+		bool next_is_double_height=false;
 		Rgb<byte> fg(255,255,255);
 		Rgb<byte> bg(0,0,0);
-
+		const Image<bool>* last_graphic = &f.get_glyph(32, Normal, Normal);
 
 		for(int c=0; c < w; c++)
 		{
-			int c = text[r][c];
-			const Image<bool> *g;
+			//Teletext is 7 bit.
+			int c = text[r][c] & 0x7f;
+			const Image<bool> *glyph;
 
 			if(c < 32)
 			{
-				//Blank glyph
-
-				g = f.get_glyph(32,Normal,Normal);
-				if(c>=1 && c <=7)
+				if(c>=1 && c <=7) //Enable colour text
 				{
 					fg.red   = (bool)(c&1) * 255;
 					fg.green = (bool)(c&2) * 255;
 					fg.blue  = (bool)(c&4) * 255;
+					graphics_on=false;
 				}
-				else if(c >=17 && c <= 23)
+				else if(c == 12)
+					double_height=false;
+				else if(c == 13)
+				{
+					double_height=true;
+					if(!double_height_bottom)
+						next_is_double_height=true;
+				}
+				else if(c >=17 && c <= 23) //Enable colour graphics
 				{
 					fg.red   = (bool)(c&1) * 255;
 					fg.green = (bool)(c&2) * 255;
 					fg.blue  = (bool)(c&4) * 255;
-					m = Font::Graphics;
+					graphics_on=true;
 				}
-				else if(c == 25)
-				{
-					//Switch graphics type
-					if(m != Font::Normal)
-						m = Fone::Graphics;
-				}
-				else if(c == 26)
-				{
-					//Switch graphics type
-					if(m != Font::Normal)
-						m = Fone::ThinGraphics;
-				}
+				else if(c == 25) //Switch to contiguous graphics if graphics are on
+					separated_graphics=false;
+				else if(c == 26) //Switch to separated graphics if graphics are on
+					separated_graphics=true;
+				else if(c == 27) //no-op
+				{}
+				else if(c == 28) //Black bg
+					bg = Rgb<byte>(0,0,0);
+				else if(c == 29) //New background (ie. copy fg colour)
+					bg = fg;
+				else if(c == 30)
+					hold_graphics=true;
+				else if(c == 31)
+					hold_graphics=false;
+				
+				//Blank glyph, or not
+				if(hold_graphics && graphics_on)
+					glyph = last_graphic;
+				else
+					glyph = &f.get_glyph(32,Normal,Normal);
+			}
+			else
+			{
+				//Double height text on row 1 maked row 2
+				//a bottom row. Non double height chars on 
+				//row 2 are blank
+				Font::Height h=Font::Standard;
+				if(double_height)
+					if(double_height_bottom)
+						h = Font::Lower;
+					else
+						h = Fone::Upper;
+				else
+					if(double_height_bottom)
+						glyph = &f.get_glyph(32,Normal,Normal);
+				
+				Font::Mode m;
+			
 
 
+			}
 
 
 
 
 
 		}
+		double_height_bottom = next_is_double_height;
 	}
 
 
