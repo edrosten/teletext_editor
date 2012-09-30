@@ -16,8 +16,10 @@ class FontSet
 	
 	public:
 		
-	static const int w=10;
-	static const int h=18;
+	ImageRef size()
+	{
+		return ImageRef(10,18);
+	}
 
 	enum Mode
 	{
@@ -48,7 +50,7 @@ class FontSet
 
 FontSet::FontSet(string name)
 {
-	blank.resize(ImageRef(w, h));
+	blank.resize(size());
 	blank.fill(false);
 	
 		
@@ -76,16 +78,16 @@ FontSet::FontSet(string name)
 	//This class reflects true telext (i.e. what the SAA chip does
 	//if youwrite to screen memory).
 
-	glyphs.resize(127, vector<Image<bool>>(5, blank));
+	glyphs.resize(128, vector<Image<bool>>(5, blank));
 
 	//Teletext font in file is is 10x18 (?)
 	//Packed as 16x18
 
 	for(int i=32; i <= 127; i++)
 	{
-		Image<bool> out(ImageRef(10,18));
+		Image<bool> out(size());
 
-		for(int y=0; y < h; y++)
+		for(int y=0; y < size().y; y++)
 		{
 			unsigned char c = fi.get(); //Second bits
 			unsigned char d = fi.get(); //First bits
@@ -106,23 +108,27 @@ FontSet::FontSet(string name)
 		//Graphics blocks have bit 5 set...
 		if(i & 32 )
 		{
-			Image<bool> graphics(ImageRef(10,18));
-			Image<bool> thingraphics(ImageRef(10,18),false);
+			graphics.resize(size());
+			thingraphics.resize(size());
+			thingraphics.fill(0);
 			
-			ImageRef ps(w/2, h/3);
+			//2x3 subpixel sizes
+			int sx = size().x/2;
+			int sy = size().y/3;
+			ImageRef ps(sx, sy);
 
 			//Fill in the 6 chunks
-			graphics.sub_image(ImageRef(  0,    0),ps).fill((bool)i&1);
-			graphics.sub_image(ImageRef(w/2,    0),ps).fill((bool)i&2);
-			graphics.sub_image(ImageRef(  0,  h/3),ps).fill((bool)i&4);
-			graphics.sub_image(ImageRef(w/2,  h/3),ps).fill((bool)i&8);
-			graphics.sub_image(ImageRef(  0,2*h/3),ps).fill((bool)i&16);
-			graphics.sub_image(ImageRef(w/2,2*h/3),ps).fill((bool)i&64);
+			graphics.sub_image(ImageRef(  0,   0),ps).fill((bool)i&1);
+			graphics.sub_image(ImageRef( sx,   0),ps).fill((bool)i&2);
+			graphics.sub_image(ImageRef(  0,  sy),ps).fill((bool)i&4);
+			graphics.sub_image(ImageRef( sx,  sy),ps).fill((bool)i&8);
+			graphics.sub_image(ImageRef(  0,2*sy),ps).fill((bool)i&16);
+			graphics.sub_image(ImageRef( sx,2*sy),ps).fill((bool)i&64);
 			
 			//Cut out the lines to thin down the graphics
-			for(int y=0; y < h; y++)
-				for(int x=0; x < w; x++)
-					if(x!=0 && x != w/2 && y != 0 && y != h/3 && y != 2*h/3)
+			for(int y=0; y < size().y; y++)
+				for(int x=0; x < size().x; x++)
+					if(x!=0 && x != sx && y != 0 && y != sy && y != 2*sy)
 						thingraphics[y][x] = graphics[y][x];
 			
 		}
@@ -146,7 +152,10 @@ int main()
 	int h=25;
 
 	Image<byte> text(ImageRef(w,h));
-	Image<byte> screen(text.size().dot_times(ImageRef(f.w, f.h)));
+
+	cin.read((char*)text.data(), text.size().area());
+
+	Image<Rgb<byte> > screen(text.size().dot_times(f.size()));
 
 	Rgb<byte> fg, bg;
 
@@ -167,6 +176,8 @@ int main()
 			//Teletext is 7 bit.
 			int c = text[y][x] & 0x7f;
 			const Image<bool> *glyph;
+			
+			cout << "-- " << c << endl;
 
 			if(c < 32)
 			{
@@ -215,6 +226,8 @@ int main()
 			}
 			else
 			{
+				cout << ".\n";
+				
 				//Double height text on row 1 maked row 2
 				//a bottom row. Non double height chars on 
 				//row 2 are blank
@@ -226,17 +239,33 @@ int main()
 						h = FontSet::Upper;
 				else
 					if(double_height_bottom)
-						glyph = &f.get_blank();
+						c = 0; //A blank character
 				
-				FontSet::Mode m;
-			
-
-
+				FontSet::Mode m = FontSet::Normal;
+				if(graphics_on)
+					if(separated_graphics)
+						m = FontSet::ThinGraphics;
+					else
+						m = FontSet::Graphics;
+				
+				cout << c << " " << m << " " << h << endl;
+				glyph = &f.get_glyph(c, m, h);
+				cout << f.get_glyph(c, m, h).size() << endl;
 			}
 
+			
+			SubImage<Rgb<byte> > s = screen.sub_image(ImageRef(x,y).dot_times(f.size()), f.size());
 
-
-
+			
+			ImageRef p(0,0);
+			do
+			{
+				if((*glyph)[p])
+					s[p] = fg;
+				else
+					s[p] = bg;
+			}
+			while(p.next(f.size()));
 
 		}
 		double_height_bottom = next_is_double_height;
