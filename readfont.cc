@@ -8,9 +8,10 @@ using namespace std;
 using namespace tag;
 using namespace CVD;
 
-class Font
+class FontSet
 {
 	//very inefficient use of memory.
+	Image<bool> blank;
 	vector<vector<Image<bool>>> glyphs;
 	
 	public:
@@ -33,15 +34,24 @@ class Font
 	};
 
 
-	Font(string filename);
+	FontSet(string filename);
 	const Image<bool>& get_glyph(int i, Mode m, Height h)
 	{
 		return glyphs[i][m];
 	}
+
+	const Image<bool>& get_blank()
+	{
+		return blank;
+	}
 };
 
-Font::Font(string name)
+FontSet::FontSet(string name)
 {
+	blank.resize(ImageRef(w, h));
+	blank.fill(false);
+	
+		
 	ifstream fi(name);
 	
 	//Teletext has 5 character sets:
@@ -66,7 +76,7 @@ Font::Font(string name)
 	//This class reflects true telext (i.e. what the SAA chip does
 	//if youwrite to screen memory).
 
-	glyphs.resize(127, vector<Image<bool>>(5));
+	glyphs.resize(127, vector<Image<bool>>(5, blank));
 
 	//Teletext font in file is is 10x18 (?)
 	//Packed as 16x18
@@ -131,17 +141,17 @@ Font::Font(string name)
 
 int main()
 {
-	Font f("teletext.fnt");
+	FontSet f("teletext.fnt");
 	int w=40;
 	int h=25;
 
 	Image<byte> text(ImageRef(w,h));
-	Image<byte> screen(text.size().dotstar(ImageRef(f.w, f.h)));
+	Image<byte> screen(text.size().dot_times(ImageRef(f.w, f.h)));
 
 	Rgb<byte> fg, bg;
 
 	bool double_height_bottom=false;
-	for(int r=0; r < h; r++)
+	for(int y=0; y < h; y++)
 	{
 		bool separated_graphics=false;
 		bool hold_graphics=false;
@@ -150,12 +160,12 @@ int main()
 		bool next_is_double_height=false;
 		Rgb<byte> fg(255,255,255);
 		Rgb<byte> bg(0,0,0);
-		const Image<bool>* last_graphic = &f.get_glyph(32, Normal, Normal);
+		const Image<bool>* last_graphic = &f.get_blank();
 
-		for(int c=0; c < w; c++)
+		for(int x=0; x < w; x++)
 		{
 			//Teletext is 7 bit.
-			int c = text[r][c] & 0x7f;
+			int c = text[y][x] & 0x7f;
 			const Image<bool> *glyph;
 
 			if(c < 32)
@@ -201,24 +211,24 @@ int main()
 				if(hold_graphics && graphics_on)
 					glyph = last_graphic;
 				else
-					glyph = &f.get_glyph(32,Normal,Normal);
+					glyph = &f.get_blank();
 			}
 			else
 			{
 				//Double height text on row 1 maked row 2
 				//a bottom row. Non double height chars on 
 				//row 2 are blank
-				Font::Height h=Font::Standard;
+				FontSet::Height h=FontSet::Standard;
 				if(double_height)
 					if(double_height_bottom)
-						h = Font::Lower;
+						h = FontSet::Lower;
 					else
-						h = Fone::Upper;
+						h = FontSet::Upper;
 				else
 					if(double_height_bottom)
-						glyph = &f.get_glyph(32,Normal,Normal);
+						glyph = &f.get_blank();
 				
-				Font::Mode m;
+				FontSet::Mode m;
 			
 
 
