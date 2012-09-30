@@ -12,13 +12,35 @@ class FontSet
 {
 	//very inefficient use of memory.
 	Image<bool> blank;
-	vector<vector<Image<bool>>> glyphs;
+	vector<vector<vector<Image<bool>>>> glyphs;
 	
+	Image<bool> get_upper(const Image<bool>& in)
+	{
+		Image<bool> upper(size());
+
+		for(int r=0; r < size().y; r++)
+			for(int c=0; c < size().x; c++)
+				upper[r][c] = in[r/2][c];
+
+		return upper;
+	}
+
+	Image<bool> get_lower(const Image<bool>& in)
+	{
+		Image<bool> lower(size());
+
+		for(int r=0; r < size().y; r++)
+			for(int c=0; c < size().x; c++)
+				lower[r][c] = in[size().y/2 + r/2][c];
+
+		return lower;
+	}
+
 	public:
 		
 	ImageRef size()
 	{
-		return ImageRef(10,18);
+		return ImageRef(12,18);
 	}
 
 	enum Mode
@@ -39,7 +61,7 @@ class FontSet
 	FontSet(string filename);
 	const Image<bool>& get_glyph(int i, Mode m, Height h)
 	{
-		return glyphs[i][m];
+		return glyphs[i][m][h];
 	}
 
 	const Image<bool>& get_blank()
@@ -51,7 +73,7 @@ class FontSet
 FontSet::FontSet(string name)
 {
 	blank.resize(size());
-	blank.fill(false);
+	blank.zero();
 	
 		
 	ifstream fi(name);
@@ -78,7 +100,7 @@ FontSet::FontSet(string name)
 	//This class reflects true telext (i.e. what the SAA chip does
 	//if youwrite to screen memory).
 
-	glyphs.resize(128, vector<Image<bool>>(5, blank));
+	glyphs.resize(128, vector<vector<Image<bool>>>(5, vector<Image<bool>>(3, blank)));
 
 	//Teletext font in file is is 10x18 (?)
 	//Packed as 16x18
@@ -86,6 +108,7 @@ FontSet::FontSet(string name)
 	for(int i=32; i <= 127; i++)
 	{
 		Image<bool> out(size());
+		out.zero();
 
 		for(int y=0; y < size().y; y++)
 		{
@@ -104,10 +127,11 @@ FontSet::FontSet(string name)
 			out[y][9] = (bool)(c&1);
 		}
 		
-		Image<bool> graphics, thingraphics;
 		//Graphics blocks have bit 5 set...
+		//Without bit 5, it reverts to normal characters.
 		if(i & 32 )
 		{
+			Image<bool> graphics, thingraphics;
 			graphics.resize(size());
 			thingraphics.resize(size());
 			thingraphics.fill(0);
@@ -131,16 +155,33 @@ FontSet::FontSet(string name)
 					if(x!=0 && x != sx && y != 0 && y != sy && y != 2*sy)
 						thingraphics[y][x] = graphics[y][x];
 			
+			glyphs[i][Normal][Standard] = out;
+			glyphs[i][Graphics][Standard] = graphics;
+			glyphs[i][ThinGraphics][Standard] = thingraphics;
+
+			glyphs[i][Normal      ][Upper] = get_upper(glyphs[i][Normal      ][Standard]);
+			glyphs[i][Graphics    ][Upper] = get_upper(glyphs[i][Graphics    ][Standard]);
+			glyphs[i][ThinGraphics][Upper] = get_upper(glyphs[i][ThinGraphics][Standard]);
+
+			glyphs[i][Normal      ][Lower] = get_lower(glyphs[i][Normal      ][Standard]);
+			glyphs[i][Graphics    ][Lower] = get_lower(glyphs[i][Graphics    ][Standard]);
+			glyphs[i][ThinGraphics][Lower] = get_lower(glyphs[i][ThinGraphics][Standard]);
 		}
 		else
 		{
-			graphics=out;
-			thingraphics=out;
+			glyphs[i][Normal][Standard] = out;
+			glyphs[i][Graphics][Standard] = out;
+			glyphs[i][ThinGraphics][Standard] = out;
+
+			glyphs[i][Normal      ][Upper] = get_upper(out);
+			glyphs[i][Graphics    ][Upper] = glyphs[i][Normal][Upper];
+			glyphs[i][ThinGraphics][Upper] = glyphs[i][Normal][Upper];
+
+			glyphs[i][Normal      ][Lower] = get_lower(out);
+			glyphs[i][Graphics    ][Lower] = glyphs[i][Normal][Lower];
+			glyphs[i][ThinGraphics][Lower] = glyphs[i][Normal][Lower];
 		}
 
-		glyphs[i][Normal] = out;
-		glyphs[i][Graphics] = graphics;
-		glyphs[i][ThinGraphics] = thingraphics;
 	}
 }
 
@@ -153,7 +194,25 @@ int main()
 
 	Image<byte> text(ImageRef(w,h));
 
-	cin.read((char*)text.data(), text.size().area());
+	//Read every second character except control ones,
+	//to that it renders OK in vim with ^M for a <13>
+	text.fill(0);
+	for(int r=0; r < w*h; r++)
+	{
+		int c = cin.get();
+		if(r % w == 0 && c == '\n')
+			c=cin.get();
+			
+		if(c>= 32)
+			c=cin.get();
+		
+		if(!cin.good())
+			break;
+		text.data()[r] = c;
+
+		cerr << "c = " << c << endl;
+	}
+
 
 	Image<Rgb<byte> > screen(text.size().dot_times(f.size()));
 
@@ -176,9 +235,8 @@ int main()
 			//Teletext is 7 bit.
 			int c = text[y][x] & 0x7f;
 			const Image<bool> *glyph;
-			
-			cout << "-- " << c << endl;
 
+			
 			if(c < 32)
 			{
 				if(c>=1 && c <=7) //Enable colour text
@@ -192,6 +250,7 @@ int main()
 					double_height=false;
 				else if(c == 13)
 				{
+					cerr << "double height ftw!\n";
 					double_height=true;
 					if(!double_height_bottom)
 						next_is_double_height=true;
@@ -226,31 +285,34 @@ int main()
 			}
 			else
 			{
-				cout << ".\n";
 				
 				//Double height text on row 1 maked row 2
 				//a bottom row. Non double height chars on 
 				//row 2 are blank
 				FontSet::Height h=FontSet::Standard;
 				if(double_height)
+				{
 					if(double_height_bottom)
 						h = FontSet::Lower;
 					else
 						h = FontSet::Upper;
+				}
 				else
+				{
 					if(double_height_bottom)
 						c = 0; //A blank character
+				}
 				
 				FontSet::Mode m = FontSet::Normal;
 				if(graphics_on)
+				{
 					if(separated_graphics)
 						m = FontSet::ThinGraphics;
 					else
 						m = FontSet::Graphics;
-				
-				cout << c << " " << m << " " << h << endl;
+				}
+				cerr << "Glyph: " << c << " " << m << " " << h << endl;	
 				glyph = &f.get_glyph(c, m, h);
-				cout << f.get_glyph(c, m, h).size() << endl;
 			}
 
 			
@@ -272,7 +334,7 @@ int main()
 	}
 
 
-
+	img_save(screen, cout, ImageType::PNM);
 }
 
 
