@@ -142,12 +142,12 @@ FontSet::FontSet(string name)
 			ImageRef ps(sx, sy);
 
 			//Fill in the 6 chunks
-			graphics.sub_image(ImageRef(  0,   0),ps).fill((bool)i&1);
-			graphics.sub_image(ImageRef( sx,   0),ps).fill((bool)i&2);
-			graphics.sub_image(ImageRef(  0,  sy),ps).fill((bool)i&4);
-			graphics.sub_image(ImageRef( sx,  sy),ps).fill((bool)i&8);
-			graphics.sub_image(ImageRef(  0,2*sy),ps).fill((bool)i&16);
-			graphics.sub_image(ImageRef( sx,2*sy),ps).fill((bool)i&64);
+			graphics.sub_image(ImageRef(  0,   0),ps).fill(i&1);
+			graphics.sub_image(ImageRef( sx,   0),ps).fill(i&2);
+			graphics.sub_image(ImageRef(  0,  sy),ps).fill(i&4);
+			graphics.sub_image(ImageRef( sx,  sy),ps).fill(i&8);
+			graphics.sub_image(ImageRef(  0,2*sy),ps).fill(i&16);
+			graphics.sub_image(ImageRef( sx,2*sy),ps).fill(i&64);
 			
 			//Cut out the lines to thin down the graphics
 			for(int y=0; y < size().y; y++)
@@ -186,6 +186,7 @@ FontSet::FontSet(string name)
 }
 
 
+
 int main()
 {
 	FontSet f("teletext.fnt");
@@ -209,8 +210,6 @@ int main()
 		if(!cin.good())
 			break;
 		text.data()[r] = c;
-
-		cerr << "c = " << c << endl;
 	}
 
 
@@ -228,7 +227,7 @@ int main()
 		bool next_is_double_height=false;
 		Rgb<byte> fg(255,255,255);
 		Rgb<byte> bg(0,0,0);
-		const Image<bool>* last_graphic = &f.get_blank();
+		int last_graphic=0;
 
 		for(int x=0; x < w; x++)
 		{
@@ -250,7 +249,6 @@ int main()
 					double_height=false;
 				else if(c == 13)
 				{
-					cerr << "double height ftw!\n";
 					double_height=true;
 					if(!double_height_bottom)
 						next_is_double_height=true;
@@ -279,41 +277,48 @@ int main()
 				
 				//Blank glyph, or not
 				if(hold_graphics && graphics_on)
-					glyph = last_graphic;
+				{
+					c = last_graphic;
+				}
 				else
-					glyph = &f.get_blank();
+					c=0;
+			}
+
+			bool no_render=0;
+			//Double height text on row 1 maked row 2
+			//a bottom row. Non double height chars on 
+			//row 2 are blank
+			FontSet::Height h=FontSet::Standard;
+			if(double_height)
+			{
+				if(double_height_bottom)
+					h = FontSet::Lower;
+				else
+					h = FontSet::Upper;
 			}
 			else
 			{
-				
-				//Double height text on row 1 maked row 2
-				//a bottom row. Non double height chars on 
-				//row 2 are blank
-				FontSet::Height h=FontSet::Standard;
-				if(double_height)
-				{
-					if(double_height_bottom)
-						h = FontSet::Lower;
-					else
-						h = FontSet::Upper;
-				}
-				else
-				{
-					if(double_height_bottom)
-						c = 0; //A blank character
-				}
-				
-				FontSet::Mode m = FontSet::Normal;
-				if(graphics_on)
-				{
-					if(separated_graphics)
-						m = FontSet::ThinGraphics;
-					else
-						m = FontSet::Graphics;
-				}
-				cerr << "Glyph: " << c << " " << m << " " << h << endl;	
-				glyph = &f.get_glyph(c, m, h);
+				if(double_height_bottom)
+					no_render=true;
 			}
+			
+			FontSet::Mode m = FontSet::Normal;
+			if(graphics_on)
+			{
+				if(separated_graphics)
+					m = FontSet::ThinGraphics;
+				else
+					m = FontSet::Graphics;
+			}
+			
+			//The last graphic drawn counts even if it isn't displayed, apparently.
+			if(graphics_on && (c & 32))
+				last_graphic=c;
+
+			if(no_render)
+				glyph = &f.get_blank();
+			else
+				glyph = &f.get_glyph(c, m, h);
 
 			
 			SubImage<Rgb<byte> > s = screen.sub_image(ImageRef(x,y).dot_times(f.size()), f.size());

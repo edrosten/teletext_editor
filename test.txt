@@ -2,7 +2,14 @@
  R e d G r e e n Y e l l o w B l u e M a g e n t a C y a n W h i t
  D o u b l e S i n g l e R e d   2 x Y e l l o w 2 x S i n g l e   Y
  D o u b l e S i n g l e R e d   2 x Y e l l o w 2 x S i n g l e   Y
- G r a p h i c s :                                                             .
+ G r a p h i c s :                                                              
    ! # $ % ' ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 : ; < = > ? @ A B C D E F G H
  I J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o
- I J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o
+ p q r s t u v w x y z { | } ~ E n d   o f   g r a p h i c s .              
+ S e p a r a t e d   G r a p h i c s :                                          
+ ! # $ % ' ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 : ; < = > ? @ A B C D E F G H
+ J K L M N O P Q R S T U V W X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o
+ p q r s t u v w x y z { | } ~ E n d   o f   g r a p h i c s .            
+ B l u e   f g . x x x R e d   o n   b l u e .                            
+ H o l d : t x t,  g f x , c o l , g f x , r e l e a s e , c o l , g f x        
+ T x t . f f f f f f f f f                                            
