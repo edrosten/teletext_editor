@@ -186,36 +186,28 @@ FontSet::FontSet(string name)
 }
 
 
-
-int main()
+class Renderer
 {
-	FontSet f("teletext.fnt");
-	int w=40;
-	int h=25;
+	FontSet f;
+	Image<Rgb<byte> > screen;
 
-	Image<byte> text(ImageRef(w,h));
+	public:
 
-	//Read every second character except control ones,
-	//to that it renders OK in vim with ^M for a <13>
-	text.fill(0);
-	for(int r=0; r < w*h; r++)
+	Renderer()
+	:f("teletext.fnt")
 	{
-		int c = cin.get();
-		if(r % w == 0 && c == '\n')
-			c=cin.get();
-			
-		if(c>= 32)
-			c=cin.get();
-		
-		if(!cin.good())
-			break;
-		text.data()[r] = c;
 	}
 
+	static const int w=40;
+	static const int h=25;
 
-	Image<Rgb<byte> > screen(text.size().dot_times(f.size()));
+	Image<Rgb<byte> > render(const Image<byte> text);
 
-	Rgb<byte> fg, bg;
+};
+
+Image<Rgb<byte> > Renderer::render(const Image<byte> text)
+{
+	screen.resize(text.size().dot_times(f.size()));
 
 	bool double_height_bottom=false;
 	for(int y=0; y < h; y++)
@@ -337,9 +329,38 @@ int main()
 		}
 		double_height_bottom = next_is_double_height;
 	}
-
-
-	img_save(screen, cout, ImageType::PNM);
+	
+	return screen;
 }
 
+
+
+int main()
+{
+	Renderer ren;
+
+	Image<byte> text(ImageRef(ren.w,ren.h));
+
+
+	//Read every second character except control ones,
+	//to that it renders OK in vim with ^M for a <13>
+	text.fill(0);
+	for(int r=0; r < ren.w*ren.h; r++)
+	{
+		int c = cin.get();
+		if(r % ren.w == 0 && c == '\n')
+			c=cin.get();
+			
+		if(c>= 32)
+			c=cin.get();
+		
+		if(!cin.good())
+			break;
+		text.data()[r] = c;
+	}
+
+
+	img_save(ren.render(text), cout,ImageType::PNM);
+
+}
 
