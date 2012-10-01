@@ -4,6 +4,15 @@
 #include <cvd/gl_helpers.h>
 #include <cvd/videodisplay.h>
 #include <tag/printf.h>
+#include <FL/Fl.H>
+#include <Fl/Fl_Menu_Bar.H>
+#include <Fl/Fl_Menu_Item.H>
+#include <Fl/Fl_Window.H>
+#include <Fl/Fl_Pack.H>
+#include <Fl/Fl_Box.H>
+#include <Fl/Fl_Tile.H>
+#include <Fl/fl_draw.H>
+
 using namespace std;
 using namespace tag;
 using namespace CVD;
@@ -196,17 +205,25 @@ class Renderer
 	Renderer()
 	:f("teletext.fnt")
 	{
+		screen.resize(ImageRef(w,h).dot_times(f.size()));
 	}
 
 	static const int w=40;
 	static const int h=25;
 
-	Image<Rgb<byte> > render(const Image<byte> text);
+	const Image<Rgb<byte>>& render(const Image<byte> text);
+	const Image<Rgb<byte>>& get_rendered()
+	{
+		return screen;
+	}
 
 };
 
-Image<Rgb<byte> > Renderer::render(const Image<byte> text)
+const Image<Rgb<byte>>& Renderer::render(const Image<byte> text)
 {
+	if(text.size() != ImageRef(w, h))
+		throw "oe noe";
+
 	screen.resize(text.size().dot_times(f.size()));
 
 	bool double_height_bottom=false;
@@ -334,9 +351,91 @@ Image<Rgb<byte> > Renderer::render(const Image<byte> text)
 }
 
 
+Fl_Menu_Item menus[]=
+{
+  {"&File",0,0,0,FL_SUBMENU},
+    {"&Open",	FL_ALT+'o', 0, 0, FL_MENU_INACTIVE},
+    {"&Close",	0,	0},
+    {"&Quit",	FL_ALT+'q', NULL, 0, FL_MENU_DIVIDER},
+  {0},
+  {"&Edit",0,0,0,FL_SUBMENU},
+    {"&Nothing",	0,	0},
+  {0},
+  {0}
+};
+
+class MainUI;
+
+class VDUDisplay: public Fl_Box
+{
+	public:
+	MainUI& ui;
+	VDUDisplay(MainUI& u)
+	:Fl_Box(0,0,0,0,""),
+	 ui(u)
+	{
+		
+	}
+
+	virtual void draw();
+};
+
+class MainUI: public Fl_Window
+{
+	Renderer ren;
+	const ImageRef screen_size;
+	Fl_Menu_Bar* menu;
+	VDUDisplay* vdu;
+
+	static const int menu_height=30;
+	Image<byte> buffer;
+
+	public:
+	
+	MainUI()
+	:Fl_Window(0,0,"Editor"),
+	 screen_size(ren.get_rendered().size()),
+	 menu(new Fl_Menu_Bar(0,0,0,0,"Menu")),
+	 vdu(new VDUDisplay(*this))
+	{
+		resizable(this);
+		size(screen_size.x, screen_size.y + menu_height);
+		menu->menu(menus);
+
+		buffer.resize(ImageRef(ren.w, ren.h));
+		buffer.fill('a');
+		end();
+
+		pack();
+		show();
+	}
+
+	const Image<Rgb<byte>> get_rendered_text(int)
+	{
+		return ren.render(buffer);
+	}
+
+	void pack()
+	{
+		menu->resize(0,0, w(), menu_height);
+		vdu->resize(0,menu_height,screen_size.x, screen_size.y);	
+
+	}
+
+};
+
+void VDUDisplay::draw()
+{
+	const Image<Rgb<byte>>& i = ui.get_rendered_text(0);
+	fl_draw_image((byte*)i.data(), x(),y(), i.size().x, i.size().y);
+}	
+
 
 int main()
 {
+	MainUI m;
+	Fl::run();
+
 	Renderer ren;
 
 	Image<byte> text(ImageRef(ren.w,ren.h));
