@@ -1,5 +1,7 @@
 #include <iostream>
 #include <array>
+#include <utility>
+#include <tuple>
 #include <cvd/image_io.h>
 #include <cvd/gl_helpers.h>
 #include <cvd/videodisplay.h>
@@ -11,6 +13,7 @@
 #include <Fl/Fl_Pack.H>
 #include <Fl/Fl_Box.H>
 #include <Fl/Fl_Tile.H>
+#include <Fl/Fl_Text_Editor.H>
 #include <Fl/fl_draw.H>
 
 using namespace std;
@@ -216,13 +219,31 @@ class Renderer
 	{
 		return screen;
 	}
-
+	
+	pair<ImageRef,ImageRef> char_area_under_sixel(int x, int y)
+	{
+		int xx = x/2;
+		int yy = y/3;
+		return make_pair(ImageRef(xx,yy).dot_times(f.size()), f.size());
+	}
+	pair<ImageRef,ImageRef> sixel_area(int x, int y)
+	{
+		int xx = x/2;
+		int yy = y/3;
+		int sx = f.size().x/2;
+		int sy = f.size().y/3;
+		ImageRef s(sx, sy);
+		return make_pair(ImageRef(xx,yy).dot_times(f.size()) + s.dot_times(ImageRef(x%2, y%3)),s);
+	}
 };
 
 const Image<Rgb<byte>>& Renderer::render(const Image<byte> text)
 {
 	if(text.size() != ImageRef(w, h))
+	{
+		cerr << "huh.\n";
 		throw "oe noe";
+	}
 
 	screen.resize(text.size().dot_times(f.size()));
 
@@ -366,12 +387,12 @@ Fl_Menu_Item menus[]=
 
 class MainUI;
 
-class VDUDisplay: public Fl_Box
+class VDUDisplay: public Fl_Window
 {
 	public:
 	MainUI& ui;
 	VDUDisplay(MainUI& u)
-	:Fl_Box(0,0,0,0,""),
+	:Fl_Window(0,0,0,0,""),
 	 ui(u)
 	{
 		
@@ -382,32 +403,87 @@ class VDUDisplay: public Fl_Box
 
 class MainUI: public Fl_Window
 {
+	public:
+
 	Renderer ren;
 	const ImageRef screen_size;
 	Fl_Menu_Bar* menu;
+	Fl_Group* group_B;
 	VDUDisplay* vdu;
 
 	static const int menu_height=30;
+	static const int initial_pad=10;
 	Image<byte> buffer;
+	int cursor_x_sixel=4;
+	int cusros_y_sizel=6;
+	bool graphics_cursor=true;
+	bool cursor_blink_on=true;
 
-	public:
-	
+
+
+	/* OK, so I don't know FLTK very well... 
+
+	+------------------------------------------------------+
+	|   A                                                  |
+    |                                                      |
+    +-------------------------+----------------------------+
+    |   B                                                  |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+    |                                                      |
+	+-------------------------+----------------------------+
+
+	The Window group will have a fully resizable group B
+	And a menu bar A. The placement of A will make it resize horizontally
+
+	Within B
+
+
+
+
+	*/
+
+
+	static const int pad=5;
+
 	MainUI()
 	:Fl_Window(0,0,"Editor"),
-	 screen_size(ren.get_rendered().size()),
-	 menu(new Fl_Menu_Bar(0,0,0,0,"Menu")),
-	 vdu(new VDUDisplay(*this))
+	 screen_size(ren.get_rendered().size())
 	{
-		resizable(this);
-		size(screen_size.x, screen_size.y + menu_height);
-		menu->menu(menus);
+
+		begin();
+			resizable(this);
+			size(screen_size.x + 2*pad, screen_size.y + menu_height);
+
+			menu = new Fl_Menu_Bar(0,0,w(), menu_height, "Menu");
+			menu->menu(menus);
+
+			group_B = new Fl_Window(0, menu_height, w(), h()-menu_height, "");	
+			group_B->begin();
+
+				vdu = new VDUDisplay(*this);
+				vdu->resizable(0);
+				vdu->resize(pad,pad,screen_size.x, screen_size.y);
+				vdu->end();
+			group_B->end();
+
+		end();
+		resizable(group_B); //Make group B the fully resizable widget
 
 		buffer.resize(ImageRef(ren.w, ren.h));
 		buffer.fill('a');
-		end();
-
-		pack();
 		show();
+
+		Fl::add_timeout(1.0, cursor_callback, this);
 	}
 
 	const Image<Rgb<byte>> get_rendered_text(int)
@@ -419,15 +495,49 @@ class MainUI: public Fl_Window
 	{
 		menu->resize(0,0, w(), menu_height);
 		vdu->resize(0,menu_height,screen_size.x, screen_size.y);	
-
 	}
 
+
+	static void cursor_callback(void* d)
+	{
+		MainUI* m = static_cast<MainUI*>(d);
+		m->cursor_blink_on ^= true;
+		m->vdu->redraw();
+		cout << "hi\n";
+		Fl::repeat_timeout(1.0, cursor_callback, d);
+	}
 };
 
 void VDUDisplay::draw()
 {
 	const Image<Rgb<byte>>& i = ui.get_rendered_text(0);
-	fl_draw_image((byte*)i.data(), x(),y(), i.size().x, i.size().y);
+	
+	Image<Rgb<byte> > j = i.copy_from_me();
+	if(ui.cursor_blink_on)
+	{
+		ImageRef tl, size;
+		if(ui.graphics_cursor)
+			tie(tl,size) = ui.ren.sixel_area(ui.cursor_x_sixel, ui.cusros_y_sizel);
+		else
+			tie(tl,size) = ui.ren.char_area_under_sixel(ui.cursor_x_sixel, ui.cusros_y_sizel);
+		
+		
+		ImageRef p = tl;
+
+		do
+		{
+			if(p.x % 2 == 0)
+			{
+				j[p].red ^= 128;
+				j[p].green ^= 128;
+				j[p].blue ^= 128;
+			}
+		}
+		while(p.next(tl,tl + size));
+
+	}
+
+	fl_draw_image((byte*)j.data(), 0, 0, j.size().x, j.size().y);
 }	
 
 
