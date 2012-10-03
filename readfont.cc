@@ -403,7 +403,6 @@ class VDUDisplay: public Fl_Window
 
 class MainUI: public Fl_Window
 {
-	public:
 
 	Renderer ren;
 	const ImageRef screen_size;
@@ -419,6 +418,16 @@ class MainUI: public Fl_Window
 	bool graphics_cursor=true;
 	bool cursor_blink_on=true;
 	double cursor_blink_time=.2;
+
+	vector<Image<byte>> history;
+	
+	void checkpoint()
+	{
+		history.push_back(buffer.copy_from_me());
+		vdu->redraw();
+	}
+
+	public:
 
 	friend class VDUDisplay;
 
@@ -500,22 +509,37 @@ class MainUI: public Fl_Window
 		m->vdu->redraw();
 		Fl::repeat_timeout(m->cursor_blink_time, cursor_callback, d);
 	}
-	
-	void set_x(int x)
+
+	void cursor_change()
 	{
-		cursor_x_sixel = max(0, min(x, ren.w * 2));
 		cursor_blink_on=true;
 		Fl::remove_timeout(cursor_callback, this);
 		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
 		vdu->redraw();
 	}
+
+	void set_x(int x)
+	{
+		cursor_x_sixel = max(0, min(x, ren.w * 2-1));
+		cursor_change();
+	}
 	void set_y(int y)
 	{
-		cursor_y_sixel = max(0, min(y, ren.h * 3));
-		cursor_blink_on=true;
-		Fl::remove_timeout(cursor_callback, this);
-		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
-		vdu->redraw();
+		cursor_y_sixel = max(0, min(y, ren.h * 3-1));
+		cursor_change();
+	}
+	void advance()
+	{
+		set_x(cursor_x_sixel+2);
+	}
+
+	int xc()
+	{
+		return cursor_x_sixel/2;
+	}
+	int yc()
+	{
+		return cursor_y_sixel/3;
 	}
 
 	int handle(int e) override
@@ -523,6 +547,7 @@ class MainUI: public Fl_Window
 		if(e == FL_KEYBOARD)
 		{	
 			int k = Fl::event_key();
+			cerr << "-->" << Fl::event_text() << "<--\n";
 			
 			//Decide whether to move in sixels or characters
 			int dx=1;
@@ -541,6 +566,58 @@ class MainUI: public Fl_Window
 				set_y(cursor_y_sixel-dy);
 			else if(k == FL_Down)
 				set_y(cursor_y_sixel+dy);
+			else if(k == ' ')
+			{
+				checkpoint();
+				buffer[yc()][xc()] = 0;
+				advance();
+			}
+			else if(k == FL_Insert)
+			{
+				for(int x=ren.w-2; x >= xc(); x--)
+					buffer[yc()][x+1] = buffer[yc()][x];
+				buffer[yc()][xc()] = 0;
+				
+			}
+			else if(k >= 32 && k <= 127 && Fl::event_state(FL_ALT))
+			{
+				//Alt + key inserts a literal character
+				checkpoint();
+				buffer[yc()][xc()] = Fl::event_text()[0];
+				advance();
+			}
+			else if(k == 'g' && Fl::event_state(FL_SHIFT))
+			{
+				graphics_cursor^=true;
+				cursor_change();
+			}
+			else if((k == 'r' || k == 'g' || k == 'b' || k == 'c' || k == 'm' || k == 'y' || k == 'w') && !Fl::event_state(FL_ALT) && !Fl::event_state(FL_CTRL) &&!Fl::event_state(FL_SHIFT))
+			{
+				//Select colours.
+				//RGB, one bit per colour...
+				int c = 0;
+				if(k == 'r')
+					c = 1;
+				else if(k == 'g')
+				  	c = 2;	
+				else if(k == 'y')
+				  	c = 3;	
+				else if(k == 'b')
+				  	c = 4;	
+				else if(k == 'm')
+				  	c = 5;	
+				else if(k == 'c')
+				  	c = 6;	
+				else if(k == 'w')
+				  	c = 7;	
+				
+				if(graphics_cursor)
+					c += 16;
+
+				checkpoint();
+				buffer[yc()][xc()] = c;
+
+			}
 			else
 				return Fl_Window::handle(e);
 		}
@@ -580,8 +657,6 @@ void VDUDisplay::draw()
 		while(p.next(tl,tl + size));
 
 	}
-	cout << "oink\n";
-
 	fl_draw_image((byte*)j.data(), 0, 0, j.size().x, j.size().y);
 }	
 
