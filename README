@@ -1,21 +1,38 @@
 Keys:
 
-G         - Toggle graphics mode
-rgbcmyw   - Set colour (text/graphics depends on mode)
-Alt+Key   - Insert literal (shift gives shifted version. Caps works too)
-Space     - Clear
-Insert    - Insert character under cursor
+
+Any mode
+--------
+	G         - Toggle graphics mode
+	rgbcmyw   - Set colour (text/graphics depends on mode)
+	Alt+Key   - Insert literal (shift gives shifted version. Caps works too)
+
+	90
+	op        - Toggle sixel in specific position
+	l;
+
+Text mode
+---------
+
+	Insert    - Insert character under cursor
+
+	x
+	Delete    - Delete character under cursor
+
+	Space     - Clear space
+
+Graphics mode
+-------------
+	Space     - Clear sixel
+	.         - Set sixel
+
 
 TODO:
 
-x
-Delete    - Delete character under cursor
+Any mode
+---------
 
-io
-kl        - Toggle sixels (in graphics mode)     
-,.
 f         - Fill all sixels 
-
 n         - Set new background 
 h         - hold graphics
 H         - unhold graphics
@@ -27,4 +44,18 @@ End       - End of line
 Shidt+Del - Delete to end of line
 Shidt+Bksp- Delete to beginning of line
 
-^T        - Toggle literal text mode.
+
+Text mode
+---------
+
+	Shift+Ins - Insert blank row
+	Shift+Del - Remove row
+
+	^T        - Toggle literal text mode.
+
+Graphics mode
+-------------
+    Delete    - Erase sixel under cursor until next non graphic
+	Insert    - Insert sixel under cursor until next non graphic
+
+

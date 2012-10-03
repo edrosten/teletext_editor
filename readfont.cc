@@ -542,6 +542,35 @@ class MainUI: public Fl_Window
 		return cursor_y_sixel/3;
 	}
 
+	enum class Set
+	{
+		On,
+		Off,
+		Toggle
+	};
+	
+	byte& crnt()
+	{
+		return  buffer[yc()][xc()];
+	}
+
+	void set_sixel(Set way)
+	{
+		int o = cursor_x_sixel%2 + 2 * cursor_y_sixel%3;
+		//But bits go 1,2,4,8,16, 64
+		if(o ==5)
+			o = 6;
+
+		int mask = (1 << o);
+
+		if(way == Set::On)
+			buffer[yc()][xc()] |= mask;
+		else if(way == Set::Off)
+			buffer[yc()][xc()] &= ~mask;
+		else if(way == Set::Toggle)
+			buffer[yc()][xc()] ^= mask;
+	}
+
 	int handle(int e) override
 	{
 		if(e == FL_KEYBOARD)
@@ -569,27 +598,50 @@ class MainUI: public Fl_Window
 			else if(k == ' ')
 			{
 				checkpoint();
-				buffer[yc()][xc()] = 0;
-				advance();
+
+				if(graphics_cursor)
+				{
+					set_sixel(Set::Off);
+					set_x(cursor_x_sixel + 1);
+				}
+				else
+				{
+					crnt() = 0;
+					advance();
+				}
+			}
+			else if(k == '.' && graphics_cursor)
+			{
+				checkpoint();
+
+				set_sixel(Set::On);
+				set_x(cursor_x_sixel + 1);
 			}
 			else if(k == FL_Insert)
 			{
 				for(int x=ren.w-2; x >= xc(); x--)
 					buffer[yc()][x+1] = buffer[yc()][x];
-				buffer[yc()][xc()] = 0;
+				crnt() = 0;
 				
 			}
 			else if(k >= 32 && k <= 127 && Fl::event_state(FL_ALT))
 			{
 				//Alt + key inserts a literal character
 				checkpoint();
-				buffer[yc()][xc()] = Fl::event_text()[0];
+				crnt() = Fl::event_text()[0];
 				advance();
 			}
 			else if(k == 'g' && Fl::event_state(FL_SHIFT))
 			{
 				graphics_cursor^=true;
 				cursor_change();
+			}
+			else if( (k == 'x' || k == FL_Delete) && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
+			{
+				checkpoint();
+				for(int x=xc(); x < ren.w-1; x++)
+					buffer[yc()][x] = buffer[yc()][x+1];
+				buffer[yc()][ren.w-1] = 0;
 			}
 			else if((k == 'r' || k == 'g' || k == 'b' || k == 'c' || k == 'm' || k == 'y' || k == 'w') && !Fl::event_state(FL_ALT) && !Fl::event_state(FL_CTRL) &&!Fl::event_state(FL_SHIFT))
 			{
@@ -615,7 +667,31 @@ class MainUI: public Fl_Window
 					c += 16;
 
 				checkpoint();
-				buffer[yc()][xc()] = c;
+				crnt()=c;
+
+			}
+			else if( (k == '9' || k == '0' || k == 'o' || k=='p' || k == 'l' || k == ';') && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
+			{
+				int c = crnt();
+				if(c & 32)
+				{
+					checkpoint();
+					if(k == '9')
+						c ^= 1;
+					else if(k == '0')
+						c ^= 2;
+					else if(k == 'o')
+						c ^= 4;
+					else if(k == 'p')
+						c ^= 8;
+					else if(k == 'l')
+						c ^= 16;
+					else if(k == ';')
+						c ^= 64;
+
+					crnt()=c;
+				}
+
 
 			}
 			else
