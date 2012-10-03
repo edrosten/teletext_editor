@@ -544,9 +544,9 @@ class MainUI: public Fl_Window
 
 	enum class Set
 	{
-		On,
-		Off,
-		Toggle
+		Off = 0,
+		On  = 1,
+		Toggle = 2
 	};
 	
 	byte& crnt()
@@ -556,7 +556,37 @@ class MainUI: public Fl_Window
 
 	void set_sixel(Set way)
 	{
-		int o = cursor_x_sixel%2 + 2 * cursor_y_sixel%3;
+		set_sixel(way, cursor_x_sixel, cursor_y_sixel);
+	}
+	
+	void set_sixel(bool s, int x, int y)
+	{
+		if(s)
+			set_sixel(Set::On, x, y);
+		else
+			set_sixel(Set::Off, x, y);
+	}
+
+	bool get_sixel(int x, int y)
+	{
+		int o = x%2 + 2 * (y%3);
+		//But bits go 1,2,4,8,16, 64
+		if(o ==5)
+			o = 6;
+
+		int mask = (1 << o);
+		
+		return static_cast<bool>(buffer[y/3][x/2] & mask);
+	}
+	
+	bool is_graphic()
+	{
+		return crnt()&32;
+	}	
+
+	void set_sixel(Set way, int x, int y)
+	{
+		int o = x%2 + 2 *(y%3);
 		//But bits go 1,2,4,8,16, 64
 		if(o ==5)
 			o = 6;
@@ -564,11 +594,11 @@ class MainUI: public Fl_Window
 		int mask = (1 << o);
 
 		if(way == Set::On)
-			buffer[yc()][xc()] |= mask;
+			buffer[y/3][x/2] |= mask;
 		else if(way == Set::Off)
-			buffer[yc()][xc()] &= ~mask;
+			buffer[y/3][x/2] &= ~mask;
 		else if(way == Set::Toggle)
-			buffer[yc()][xc()] ^= mask;
+			buffer[y/3][x/2] ^= mask;
 	}
 
 	int handle(int e) override
@@ -597,31 +627,59 @@ class MainUI: public Fl_Window
 				set_y(cursor_y_sixel+dy);
 			else if(k == ' ')
 			{
-				checkpoint();
 
 				if(graphics_cursor)
 				{
-					set_sixel(Set::Off);
-					set_x(cursor_x_sixel + 1);
+					if(is_graphic())
+					{
+						checkpoint();
+						set_sixel(Set::Off);
+						set_x(cursor_x_sixel + 1);
+					}
 				}
 				else
 				{
-					crnt() = 0;
+					checkpoint();
+					crnt() = 32;
 					advance();
 				}
 			}
 			else if(k == '.' && graphics_cursor)
 			{
-				checkpoint();
-
-				set_sixel(Set::On);
-				set_x(cursor_x_sixel + 1);
+				if(is_graphic())
+				{
+					checkpoint();
+					set_sixel(Set::On);
+					set_x(cursor_x_sixel + 1);
+				}
 			}
 			else if(k == FL_Insert)
 			{
-				for(int x=ren.w-2; x >= xc(); x--)
-					buffer[yc()][x+1] = buffer[yc()][x];
-				crnt() = 0;
+				if(graphics_cursor)
+				{
+					
+					if(is_graphic())
+					{
+						checkpoint();
+
+						//Search for next non-graphic
+						int end=xc();
+						for(; end < ren.w; end++)
+							if(!( buffer[yc()][end] & 32))
+								break;
+						
+						for(int sx = end*2-2; sx >= cursor_x_sixel; sx--)
+							set_sixel(get_sixel(sx,cursor_y_sixel), sx+1, cursor_y_sixel);
+						set_sixel(Set::Off, cursor_x_sixel, cursor_y_sixel);
+					}
+				}
+				else
+				{
+					checkpoint();
+					for(int x=ren.w-2; x >= xc(); x--)
+						buffer[yc()][x+1] = buffer[yc()][x];
+					crnt() = 0;
+				}
 				
 			}
 			else if(k >= 32 && k <= 127 && Fl::event_state(FL_ALT))
