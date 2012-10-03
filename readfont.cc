@@ -415,10 +415,12 @@ class MainUI: public Fl_Window
 	static const int initial_pad=10;
 	Image<byte> buffer;
 	int cursor_x_sixel=4;
-	int cusros_y_sizel=6;
+	int cursor_y_sixel=6;
 	bool graphics_cursor=true;
 	bool cursor_blink_on=true;
+	double cursor_blink_time=.2;
 
+	friend class VDUDisplay;
 
 
 	/* OK, so I don't know FLTK very well... 
@@ -462,7 +464,7 @@ class MainUI: public Fl_Window
 
 		begin();
 			resizable(this);
-			size(screen_size.x + 2*pad, screen_size.y + menu_height);
+			size(screen_size.x + 2*pad, screen_size.y + menu_height + 2*pad);
 
 			menu = new Fl_Menu_Bar(0,0,w(), menu_height, "Menu");
 			menu->menu(menus);
@@ -483,7 +485,7 @@ class MainUI: public Fl_Window
 		buffer.fill('a');
 		show();
 
-		Fl::add_timeout(1.0, cursor_callback, this);
+		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
 	}
 
 	const Image<Rgb<byte>> get_rendered_text(int)
@@ -491,21 +493,63 @@ class MainUI: public Fl_Window
 		return ren.render(buffer);
 	}
 
-	void pack()
-	{
-		menu->resize(0,0, w(), menu_height);
-		vdu->resize(0,menu_height,screen_size.x, screen_size.y);	
-	}
-
-
 	static void cursor_callback(void* d)
 	{
 		MainUI* m = static_cast<MainUI*>(d);
 		m->cursor_blink_on ^= true;
 		m->vdu->redraw();
-		cout << "hi\n";
-		Fl::repeat_timeout(1.0, cursor_callback, d);
+		Fl::repeat_timeout(m->cursor_blink_time, cursor_callback, d);
 	}
+	
+	void set_x(int x)
+	{
+		cursor_x_sixel = max(0, min(x, ren.w * 2));
+		cursor_blink_on=true;
+		Fl::remove_timeout(cursor_callback, this);
+		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
+		vdu->redraw();
+	}
+	void set_y(int y)
+	{
+		cursor_y_sixel = max(0, min(y, ren.h * 3));
+		cursor_blink_on=true;
+		Fl::remove_timeout(cursor_callback, this);
+		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
+		vdu->redraw();
+	}
+
+	int handle(int e) override
+	{
+		if(e == FL_KEYBOARD)
+		{	
+			int k = Fl::event_key();
+			
+			//Decide whether to move in sixels or characters
+			int dx=1;
+			int dy=1;
+			if(!graphics_cursor)
+			{
+				dx=2;
+				dy=3;
+			}
+
+			if(k == FL_Left)
+				set_x(cursor_x_sixel-dx);
+			else if(k == FL_Right)
+				set_x(cursor_x_sixel+dx);
+			else if(k == FL_Up)
+				set_y(cursor_y_sixel-dy);
+			else if(k == FL_Down)
+				set_y(cursor_y_sixel+dy);
+			else
+				return Fl_Window::handle(e);
+		}
+		else
+			return Fl_Window::handle(e);
+		return 1;
+	}
+
+
 };
 
 void VDUDisplay::draw()
@@ -517,25 +561,26 @@ void VDUDisplay::draw()
 	{
 		ImageRef tl, size;
 		if(ui.graphics_cursor)
-			tie(tl,size) = ui.ren.sixel_area(ui.cursor_x_sixel, ui.cusros_y_sizel);
+			tie(tl,size) = ui.ren.sixel_area(ui.cursor_x_sixel, ui.cursor_y_sixel);
 		else
-			tie(tl,size) = ui.ren.char_area_under_sixel(ui.cursor_x_sixel, ui.cusros_y_sizel);
+			tie(tl,size) = ui.ren.char_area_under_sixel(ui.cursor_x_sixel, ui.cursor_y_sixel);
 		
 		
 		ImageRef p = tl;
 
 		do
 		{
-			if(p.x % 2 == 0)
+			if(p.x % 1 == 0)
 			{
-				j[p].red ^= 128;
-				j[p].green ^= 128;
-				j[p].blue ^= 128;
+				j[p].red ^= 255;
+				j[p].green ^= 255;
+				j[p].blue ^= 255;
 			}
 		}
 		while(p.next(tl,tl + size));
 
 	}
+	cout << "oink\n";
 
 	fl_draw_image((byte*)j.data(), 0, 0, j.size().x, j.size().y);
 }	
