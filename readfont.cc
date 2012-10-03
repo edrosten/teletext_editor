@@ -2,6 +2,7 @@
 #include <array>
 #include <utility>
 #include <tuple>
+#include <sstream>
 #include <cvd/image_io.h>
 #include <cvd/gl_helpers.h>
 #include <cvd/videodisplay.h>
@@ -25,7 +26,7 @@ class FontSet
 	//very inefficient use of memory.
 	Image<bool> blank;
 	vector<vector<vector<Image<bool>>>> glyphs;
-	
+
 	Image<bool> get_upper(const Image<bool>& in)
 	{
 		Image<bool> upper(size());
@@ -50,6 +51,7 @@ class FontSet
 
 	public:
 		
+	vector<Image<bool>> control_glyphs;
 	ImageRef size()
 	{
 		return ImageRef(12,18);
@@ -87,7 +89,16 @@ FontSet::FontSet(string name)
 	blank.resize(size());
 	blank.zero();
 	
+	for(int i=0; i < 32; i++)
+	{
+		ostringstream os;
+		os << "resources/" << setfill('0') << setw(4) << i << ".png";
 		
+		cerr  << os.str() << endl;
+		
+		control_glyphs.push_back(img_load(os.str()));
+	}
+
 	ifstream fi(name);
 	
 	//Teletext has 5 character sets:
@@ -214,7 +225,7 @@ class Renderer
 	static const int w=40;
 	static const int h=25;
 
-	const Image<Rgb<byte>>& render(const Image<byte> text);
+	const Image<Rgb<byte>>& render(const Image<byte> text, bool control);
 	const Image<Rgb<byte>>& get_rendered()
 	{
 		return screen;
@@ -237,7 +248,7 @@ class Renderer
 	}
 };
 
-const Image<Rgb<byte>>& Renderer::render(const Image<byte> text)
+const Image<Rgb<byte>>& Renderer::render(const Image<byte> text, bool control)
 {
 	if(text.size() != ImageRef(w, h))
 	{
@@ -263,6 +274,8 @@ const Image<Rgb<byte>>& Renderer::render(const Image<byte> text)
 		{
 			//Teletext is 7 bit.
 			int c = text[y][x] & 0x7f;
+			//Remeber c so we can reder control characters on top
+			int actual_c = c;
 			const Image<bool> *glyph;
 
 			
@@ -352,7 +365,7 @@ const Image<Rgb<byte>>& Renderer::render(const Image<byte> text)
 
 			
 			SubImage<Rgb<byte> > s = screen.sub_image(ImageRef(x,y).dot_times(f.size()), f.size());
-
+			
 			
 			ImageRef p(0,0);
 			do
@@ -363,6 +376,30 @@ const Image<Rgb<byte>>& Renderer::render(const Image<byte> text)
 					s[p] = bg;
 			}
 			while(p.next(f.size()));
+
+			if(actual_c < 32 && control)
+			{
+				const Image<bool>& glyph = f.control_glyphs[actual_c];
+				
+				Rgb<byte> bg1 = fg;
+				if(fg == bg)
+					bg1 = Rgb<byte>(0,0,0);
+					
+				ImageRef p(0,0);
+				do
+				{
+					if(!glyph[p])
+					{
+						if(s[p] == fg)
+							s[p] = bg1;
+						else
+							s[p] = fg;
+					}
+				}
+				while(p.next(f.size()));
+
+
+			}
 
 		}
 		double_height_bottom = next_is_double_height;
@@ -418,6 +455,7 @@ class MainUI: public Fl_Window
 	bool graphics_cursor=true;
 	bool cursor_blink_on=true;
 	double cursor_blink_time=.2;
+	bool show_control=1;
 
 	vector<Image<byte>> history;
 	
@@ -499,7 +537,7 @@ class MainUI: public Fl_Window
 
 	const Image<Rgb<byte>> get_rendered_text(int)
 	{
-		return ren.render(buffer);
+		return ren.render(buffer, show_control);
 	}
 
 	static void cursor_callback(void* d)
@@ -663,15 +701,21 @@ class MainUI: public Fl_Window
 				checkpoint();
 				crnt() = 29;
 			}
-			else if(k == 'd' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
+			else if(k == 'd' && ( Fl::event_state()& (FL_ALT|FL_CTRL))==0)
 			{
 				checkpoint();
-				crnt() = 13;
+				if(Fl::event_state(FL_SHIFT))
+					crnt() = 12;
+				else
+					crnt() = 13;
 			}
-			else if(k == 'd' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))== FL_SHIFT)
+			else if(k == 'h' && ( Fl::event_state()& (FL_ALT|FL_CTRL))==0)
 			{
 				checkpoint();
-				crnt() = 12;
+				if(Fl::event_state(FL_SHIFT))
+					crnt() = 31;
+				else
+					crnt() = 30;
 			}
 			else if(k == FL_Insert)
 			{
@@ -843,7 +887,7 @@ int main()
 	}
 
 
-	img_save(ren.render(text), cout,ImageType::PNM);
+	//img_save(ren.render(text), cout,ImageType::PNM);
 
 }
 
