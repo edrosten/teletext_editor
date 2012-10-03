@@ -11,6 +11,10 @@ Any mode
 	op        - Toggle sixel in specific position
 	l;
 
+	n         - Set new background 
+	d         - double height
+	D         - normal height
+
 Text mode
 ---------
 
@@ -20,11 +24,16 @@ Text mode
 	Delete    - Delete character under cursor
 
 	Space     - Clear space
+	f         - Insert block
 
 Graphics mode
 -------------
 	Space     - Clear sixel
 	.         - Set sixel
+
+    Delete    - Erase sixel under cursor until next non graphic
+	Insert    - Insert sixel under cursor until next non graphic
+	f         - Fill all sixels 
 
 
 TODO:
@@ -32,12 +41,8 @@ TODO:
 Any mode
 ---------
 
-f         - Fill all sixels 
-n         - Set new background 
 h         - hold graphics
 H         - unhold graphics
-d         - double height
-D         - normal height
 
 Home      - Beginning of line
 End       - End of line
@@ -55,7 +60,3 @@ Text mode
 
 Graphics mode
 -------------
-    Delete    - Erase sixel under cursor until next non graphic
-	Insert    - Insert sixel under cursor until next non graphic
-
-

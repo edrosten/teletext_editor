@@ -653,6 +653,26 @@ class MainUI: public Fl_Window
 					set_x(cursor_x_sixel + 1);
 				}
 			}
+			else if(k == 'f' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
+			{
+				checkpoint();
+				crnt() = 127;
+			}
+			else if(k == 'n' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
+			{
+				checkpoint();
+				crnt() = 29;
+			}
+			else if(k == 'd' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
+			{
+				checkpoint();
+				crnt() = 13;
+			}
+			else if(k == 'd' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))== FL_SHIFT)
+			{
+				checkpoint();
+				crnt() = 12;
+			}
 			else if(k == FL_Insert)
 			{
 				if(graphics_cursor)
