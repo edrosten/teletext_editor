@@ -14,6 +14,11 @@ Any mode
 	n         - Set new background 
 	d         - double height
 	D         - normal height
+	h         - hold graphics
+	H         - unhold graphics
+
+	^Z        - undo
+	^Y        - redo
 
 Text mode
 ---------
@@ -41,8 +46,6 @@ TODO:
 Any mode
 ---------
 
-h         - hold graphics
-H         - unhold graphics
 
 Home      - Beginning of line
 End       - End of line

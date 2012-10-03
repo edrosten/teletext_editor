@@ -456,15 +456,56 @@ class MainUI: public Fl_Window
 	bool cursor_blink_on=true;
 	double cursor_blink_time=.2;
 	bool show_control=1;
+	bool checkpoint_issued=0;
 
-	vector<Image<byte>> history;
+	vector<Image<byte>> history, redo_buffer;
 	
 	void checkpoint()
 	{
 		history.push_back(buffer.copy_from_me());
+		checkpoint_issued=1;
 		vdu->redraw();
 	}
+	
+	//Never duplicate checkpoint states. Explicitly checking states
+	//makes logic with respect to complex sixel mangling easier.
+	void process_checkpoint()
+	{
+		if(checkpoint_issued)
+		{
+			if(equal(buffer.begin(), buffer.end(), history.back().begin()))
+			{
+				history.pop_back();
+			}
+			else
+			{
+				redo_buffer.clear();
+			}
+		}
+		checkpoint_issued=0;
+	}
 
+	void undo()
+	{
+		if(!history.empty())
+		{
+			redo_buffer.push_back(buffer);
+			buffer=history.back();
+			history.pop_back();
+			vdu->redraw();
+		}
+	}
+		
+	void redo()
+	{
+		if(!redo_buffer.empty())
+		{
+			history.push_back(buffer);
+			buffer=redo_buffer.back();
+			redo_buffer.pop_back();
+			vdu->redraw();
+		}
+	}
 	public:
 
 	friend class VDUDisplay;
@@ -717,6 +758,14 @@ class MainUI: public Fl_Window
 				else
 					crnt() = 30;
 			}
+			else if(k == 'z' && Fl::event_state(FL_CTRL))
+			{
+				undo();
+			}
+			else if(k == 'y' && Fl::event_state(FL_CTRL))
+			{
+				redo();
+			}
 			else if(k == FL_Insert)
 			{
 				if(graphics_cursor)
@@ -763,7 +812,7 @@ class MainUI: public Fl_Window
 				checkpoint();
 				for(int x=xc(); x < ren.w-1; x++)
 					buffer[yc()][x] = buffer[yc()][x+1];
-				buffer[yc()][ren.w-1] = 0;
+				buffer[yc()][ren.w-1] = 32;
 			}
 			else if((k == 'r' || k == 'g' || k == 'b' || k == 'c' || k == 'm' || k == 'y' || k == 'w') && !Fl::event_state(FL_ALT) && !Fl::event_state(FL_CTRL) &&!Fl::event_state(FL_SHIFT))
 			{
@@ -821,6 +870,8 @@ class MainUI: public Fl_Window
 		}
 		else
 			return Fl_Window::handle(e);
+
+		process_checkpoint();
 		return 1;
 	}
 
