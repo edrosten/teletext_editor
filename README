@@ -1,0 +1,30 @@
+Keys:
+
+G         - Toggle graphics mode
+rgbcmyw   - Set colour (text/graphics depends on mode)
+Alt+Key   - Insert literal (shift gives shifted version. Caps works too)
+Space     - Clear
+Insert    - Insert character under cursor
+
+TODO:
+
+x
+Delete    - Delete character under cursor
+
+io
+kl        - Toggle sixels (in graphics mode)     
+,.
+f         - Fill all sixels 
+
+n         - Set new background 
+h         - hold graphics
+H         - unhold graphics
+d         - double height
+D         - normal height
+
+Home      - Beginning of line
+End       - End of line
+Shidt+Del - Delete to end of line
+Shidt+Bksp- Delete to beginning of line
+
+^T        - Toggle literal text mode.
