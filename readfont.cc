@@ -3,10 +3,15 @@
 #include <utility>
 #include <tuple>
 #include <sstream>
+#include <cstring>
+#include <cerrno>
+
 #include <cvd/image_io.h>
 #include <cvd/gl_helpers.h>
 #include <cvd/videodisplay.h>
+
 #include <tag/printf.h>
+
 #include <FL/Fl.H>
 #include <Fl/Fl_Menu_Bar.H>
 #include <Fl/Fl_Menu_Item.H>
@@ -14,8 +19,10 @@
 #include <Fl/Fl_Pack.H>
 #include <Fl/Fl_Box.H>
 #include <Fl/Fl_Tile.H>
+#include <Fl/Fl_File_Chooser.H>
 #include <Fl/Fl_Text_Editor.H>
 #include <Fl/fl_draw.H>
+#include <Fl/fl_ask.H>
 
 using namespace std;
 using namespace tag;
@@ -438,12 +445,14 @@ class MainUI: public Fl_Window
 		Text
 	};
 
-	Fl_Menu_Item menus[10]=
+	Fl_Menu_Item menus[13]=
 	{
 	  {"&File",0,0,0,FL_SUBMENU,0,0,0,0},
-		{"&Open",	FL_ALT+'o', 0, 0, FL_MENU_INACTIVE,0,0,0,0},
-		{"&Close",	0,	0, 0, 0, 0, 0, 0, 0},
-		{"&Quit",	FL_ALT+'q', NULL, 0, FL_MENU_DIVIDER,0,0,0,0},
+		{"&Open",   FL_ALT+'o' ,                       0, 0, FL_MENU_INACTIVE,0,0,0,0},
+		{"&Save",   FL_CTRL+'s',save_callback_s,    this, 0, 0, 0, 0, 0},
+		{"Save &as",          0,save_as_callback_s, this, 0, 0, 0, 0, 0},
+		{"Save a &copy",          0,save_a_copy_callback_s, this, 0, 0, 0, 0, 0},
+		{"&Quit",	FL_ALT+'q' ,                    NULL, 0, FL_MENU_DIVIDER,0,0,0,0},
 	  {0,0,0,0,0,0,0,0,0},
 	  {"&Edit",0,0,0,FL_SUBMENU,0,0,0,0},
 	  {0,0,0,0,0,0,0,0,0},
@@ -473,6 +482,7 @@ class MainUI: public Fl_Window
 	bool checkpoint_issued=0;
 
 	string save_name;
+	string err;
 
 	vector<Image<byte>> history, redo_buffer;
 	
@@ -719,7 +729,7 @@ class MainUI: public Fl_Window
 				break;
 		return end;
 	}
-/*
+
 	struct SaveData{
 		MainUI* ui;
 		string filename;
@@ -729,14 +739,24 @@ class MainUI: public Fl_Window
 	void actually_save(const string& name, bool remember)
 	{
 		ofstream out(name);
-		out.write(buffer.data(), buffer.size().area());
+		out.write(reinterpret_cast<char*>(buffer.data()), buffer.size().area());
 		
 		if(!out.good())
 		{
-			string
+			err = "Error saving to \"" + name + "\": " + strerror(errno);	
+			fl_choice(err.c_str(), "Horsefeathers!", "", "");	
+		}
+		else if(remember)
+		{
+			save_name = name;
+			label(save_name.c_str());
 		}
 	}
-
+	
+	static void save_callback_s(Fl_Widget*, void * ui)
+	{
+		static_cast<MainUI*>(ui)->save_callback();
+	}
 	void save_callback()
 	{
 		if(save_name == "")
@@ -751,12 +771,40 @@ class MainUI: public Fl_Window
 		}
 	}
 
+	static void save_as_callback_s(Fl_Widget*, void * ui)
+	{
+		static_cast<MainUI*>(ui)->save_as_callback();
+	}
+	void save_as_callback()
+	{
+		Fl_File_Chooser* file = new Fl_File_Chooser(".", "Text (*.txt)\tAll files (*)", Fl_File_Chooser::CREATE, "Save as...");
+		file->callback(save_dialog_callback_s, this);
+		file->show();
+	}
+
+
+	static void save_a_copy_callback_s(Fl_Widget*, void * ui)
+	{
+		static_cast<MainUI*>(ui)->save_a_copy_callback();
+	}
+	void save_a_copy_callback()
+	{
+		Fl_File_Chooser* file = new Fl_File_Chooser(".", "Text (*.txt)\tAll files (*)", Fl_File_Chooser::CREATE, "Save as...");
+		file->callback(save_a_copy_dialog_callback_s, this);
+		file->show();
+	}
+
 	static void save_dialog_callback_s(Fl_File_Chooser* w, void * ui)
 	{
 		if(!w->visible())
-			((CricketUI*)ui)->actually_save(w->value());
+			((MainUI*)ui)->actually_save(w->value(), true);
 	}
-*/
+
+	static void save_a_copy_dialog_callback_s(Fl_File_Chooser* w, void * ui)
+	{
+		if(!w->visible())
+			((MainUI*)ui)->actually_save(w->value(), false);
+	}
 
 
 	int handle(int e) override
