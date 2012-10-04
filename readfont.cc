@@ -680,6 +680,16 @@ class MainUI: public Fl_Window
 			buffer[y/3][x/2] ^= mask;
 	}
 
+	int next_non_graphic_char()
+	{
+		//Search for next non-graphic
+		int end=xc();
+		for(; end < ren.w; end++)
+			if(!( buffer[yc()][end] & 32))
+				break;
+		return end;
+	}
+
 	int handle(int e) override
 	{
 		if(e == FL_KEYBOARD)
@@ -704,7 +714,7 @@ class MainUI: public Fl_Window
 				set_y(cursor_y_sixel-dy);
 			else if(k == FL_Down)
 				set_y(cursor_y_sixel+dy);
-			else if(k == ' ')
+			else if(k == ' ') //Blank current element
 			{
 
 				if(graphics_cursor)
@@ -723,7 +733,7 @@ class MainUI: public Fl_Window
 					advance();
 				}
 			}
-			else if(k == '.' && graphics_cursor)
+			else if(k == '.' && graphics_cursor) //Fill current sixel
 			{
 				if(is_graphic())
 				{
@@ -732,18 +742,23 @@ class MainUI: public Fl_Window
 					set_x(cursor_x_sixel + 1);
 				}
 			}
-			else if(k == 'f' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
+			else if(k == 'f' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0) //Fill block
 			{
 				checkpoint();
 				crnt() = 127;
 			}
-			else if(k == 'n' && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
+			else if(k == 'n' && ( Fl::event_state()& (FL_ALT|FL_CTRL))==0)
 			{
+				//Set black/new background
 				checkpoint();
-				crnt() = 29;
+				if(Fl::event_state(FL_SHIFT))
+					crnt() = 28;
+				else
+					crnt() = 29;
 			}
 			else if(k == 'd' && ( Fl::event_state()& (FL_ALT|FL_CTRL))==0)
 			{
+				//Set single/double height
 				checkpoint();
 				if(Fl::event_state(FL_SHIFT))
 					crnt() = 12;
@@ -752,6 +767,7 @@ class MainUI: public Fl_Window
 			}
 			else if(k == 'h' && ( Fl::event_state()& (FL_ALT|FL_CTRL))==0)
 			{
+				//Release/hold graphics
 				checkpoint();
 				if(Fl::event_state(FL_SHIFT))
 					crnt() = 31;
@@ -768,6 +784,7 @@ class MainUI: public Fl_Window
 			}
 			else if(k == FL_Insert)
 			{
+				//Insert an element and shift thr row
 				if(graphics_cursor)
 				{
 					
@@ -775,12 +792,8 @@ class MainUI: public Fl_Window
 					{
 						checkpoint();
 
-						//Search for next non-graphic
-						int end=xc();
-						for(; end < ren.w; end++)
-							if(!( buffer[yc()][end] & 32))
-								break;
-						
+						int end = next_non_graphic_char();
+
 						for(int sx = end*2-2; sx >= cursor_x_sixel; sx--)
 							set_sixel(get_sixel(sx,cursor_y_sixel), sx+1, cursor_y_sixel);
 						set_sixel(Set::Off, cursor_x_sixel, cursor_y_sixel);
@@ -791,7 +804,7 @@ class MainUI: public Fl_Window
 					checkpoint();
 					for(int x=ren.w-2; x >= xc(); x--)
 						buffer[yc()][x+1] = buffer[yc()][x];
-					crnt() = 0;
+					crnt() = 32;
 				}
 				
 			}
@@ -804,15 +817,31 @@ class MainUI: public Fl_Window
 			}
 			else if(k == 'g' && Fl::event_state(FL_SHIFT))
 			{
+				//Switch between graphics mode and regular mode
 				graphics_cursor^=true;
 				cursor_change();
 			}
 			else if( (k == 'x' || k == FL_Delete) && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
 			{
 				checkpoint();
-				for(int x=xc(); x < ren.w-1; x++)
-					buffer[yc()][x] = buffer[yc()][x+1];
-				buffer[yc()][ren.w-1] = 32;
+				
+				if(graphics_cursor)
+				{
+					if(is_graphic())
+					{
+						int end = next_non_graphic_char();
+						for(int sx=cursor_x_sixel; sx < (end-1)*2+1; sx++)
+							set_sixel(get_sixel(sx+1,cursor_y_sixel), sx, cursor_y_sixel);
+						set_sixel(Set::Off, (end-1)*2+1, cursor_y_sixel);
+
+					}
+				}
+				else
+				{
+					for(int x=xc(); x < ren.w-1; x++)
+						buffer[yc()][x] = buffer[yc()][x+1];
+					buffer[yc()][ren.w-1] = 32;
+				}
 			}
 			else if((k == 'r' || k == 'g' || k == 'b' || k == 'c' || k == 'm' || k == 'y' || k == 'w') && !Fl::event_state(FL_ALT) && !Fl::event_state(FL_CTRL) &&!Fl::event_state(FL_SHIFT))
 			{

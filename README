@@ -12,6 +12,7 @@ Any mode
 	l;
 
 	n         - Set new background 
+	N         - Set black background 
 	d         - double height
 	D         - normal height
 	h         - hold graphics
