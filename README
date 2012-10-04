@@ -19,11 +19,12 @@ Any mode
 	D         - normal height
 	h         - hold graphics
 	H         - unhold graphics
-
 	^Z        - undo
 	^Y        - redo
 	Home      - Beginning of line
 	End       - End of line
+	F1        - Toggle code rendering
+	F2        - Toggle grid rendering
 
 Character mode
 --------------

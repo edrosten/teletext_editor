@@ -1,5 +1,5 @@
 CXX=g++-4.8-svn
-CXXFLAGS=-std=c++0x -D_GLIBCXX_DEBUG -g -ggdb -Wall -Wextra -Wno-missing-field-initializers
+CXXFLAGS=-std=c++0x -D_GLIBCXX_DEBUG -g -ggdb -Wall -Wextra 
 LDFLAGS=-lcvd_debug -lfltk -lfltk_gl
 
 all:bitmaps readfont

@@ -230,6 +230,11 @@ class Renderer
 	{
 		return screen;
 	}
+
+	ImageRef glyph_size()
+	{
+		return f.size();
+	}	
 	
 	pair<ImageRef,ImageRef> char_area_under_sixel(int x, int y)
 	{
@@ -381,7 +386,7 @@ const Image<Rgb<byte>>& Renderer::render(const Image<byte> text, bool control)
 			{
 				const Image<bool>& glyph = f.control_glyphs[actual_c];
 				
-				Rgb<byte> bg1 = fg;
+				Rgb<byte> bg1 = bg;
 				if(fg == bg)
 					bg1 = Rgb<byte>(0,0,0);
 					
@@ -408,20 +413,6 @@ const Image<Rgb<byte>>& Renderer::render(const Image<byte> text, bool control)
 	return screen;
 }
 
-
-Fl_Menu_Item menus[]=
-{
-  {"&File",0,0,0,FL_SUBMENU},
-    {"&Open",	FL_ALT+'o', 0, 0, FL_MENU_INACTIVE},
-    {"&Close",	0,	0},
-    {"&Quit",	FL_ALT+'q', NULL, 0, FL_MENU_DIVIDER},
-  {0},
-  {"&Edit",0,0,0,FL_SUBMENU},
-    {"&Nothing",	0,	0},
-  {0},
-  {0}
-};
-
 class MainUI;
 
 class VDUDisplay: public Fl_Window
@@ -447,10 +438,26 @@ class MainUI: public Fl_Window
 		Text
 	};
 
+	Fl_Menu_Item menus[10]=
+	{
+	  {"&File",0,0,0,FL_SUBMENU,0,0,0,0},
+		{"&Open",	FL_ALT+'o', 0, 0, FL_MENU_INACTIVE,0,0,0,0},
+		{"&Close",	0,	0, 0, 0, 0, 0, 0, 0},
+		{"&Quit",	FL_ALT+'q', NULL, 0, FL_MENU_DIVIDER,0,0,0,0},
+	  {0,0,0,0,0,0,0,0,0},
+	  {"&Edit",0,0,0,FL_SUBMENU,0,0,0,0},
+	  {0,0,0,0,0,0,0,0,0},
+	  {"Codes", FL_F+1, menu_toggle_callback_s, this, FL_MENU_TOGGLE + FL_MENU_VALUE, 0,0,0,0},
+	  {"Grid",  FL_F+2, menu_toggle_callback_s, this, FL_MENU_TOGGLE                , 0,0,0,0},
+	  {0,0,0,0,0,0,0,0,0},
+	};
+
+
 	Renderer ren;
 	const ImageRef screen_size;
 	Fl_Menu_Bar* menu;
 	Fl_Group* group_B;
+	const Fl_Menu_Item* codes_toggle, *grid_toggle;
 	VDUDisplay* vdu;
 
 	static const int menu_height=30;
@@ -515,6 +522,15 @@ class MainUI: public Fl_Window
 			vdu->redraw();
 		}
 	}
+
+	static void menu_toggle_callback_s(Fl_Widget*, void * ui)
+	{
+		//Fl_Menu_ *m = static_cast<Fl_Menu_*>(w);
+		//const Fl_Menu_Item *i = m->mvalue();
+		static_cast<MainUI*>(ui)->vdu->redraw();
+	}
+
+
 	public:
 
 	friend class VDUDisplay;
@@ -565,6 +581,11 @@ class MainUI: public Fl_Window
 
 			menu = new Fl_Menu_Bar(0,0,w(), menu_height, "Menu");
 			menu->menu(menus);
+			codes_toggle=menu->find_item("Codes");
+			grid_toggle=menu->find_item("Grid");
+
+			assert(codes_toggle != NULL);
+			assert(grid_toggle != NULL);
 
 			group_B = new Fl_Window(0, menu_height, w(), h()-menu_height, "");	
 			group_B->begin();
@@ -587,7 +608,7 @@ class MainUI: public Fl_Window
 
 	const Image<Rgb<byte>> get_rendered_text(int)
 	{
-		return ren.render(buffer, show_control);
+		return ren.render(buffer, codes_toggle->value());
 	}
 
 	static void cursor_callback(void* d)
@@ -1040,6 +1061,31 @@ void VDUDisplay::draw()
 		while(p.next(tl,tl + size));
 
 	}
+
+	if(ui.grid_toggle->value())
+	{
+		
+		ImageRef p(0,0);
+		do
+		{
+			if(p.x % ui.ren.glyph_size().x == 0)
+			{
+				if(p.x%2 == 0)
+					j[p] = Rgb<byte>(128,128,128);
+				else
+					j[p] = Rgb<byte>(0,0,0);
+			}
+			if(p.y % ui.ren.glyph_size().y == 0)
+			{
+				if(p.y%2 == 0)
+					j[p] = Rgb<byte>(128,128,128);
+				else
+					j[p] = Rgb<byte>(0,0,0);
+			}
+		}
+		while(p.next(j.size()));
+	}
+
 	fl_draw_image((byte*)j.data(), 0, 0, j.size().x, j.size().y);
 }	
 
