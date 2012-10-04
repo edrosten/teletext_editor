@@ -25,6 +25,7 @@ Any mode
 	End       - End of line
 	F1        - Toggle code rendering
 	F2        - Toggle grid rendering
+	^S        - Save
 
 Character mode
 --------------
@@ -59,10 +60,7 @@ Text Mode
 
 TODO:
 
-Any mode
----------
-
-
-Shidt+Del - Delete to end of line
-Shidt+Bksp- Delete to beginning of line
-
+Insert a line of sixels
+Insert column of sixels
+select
+move
