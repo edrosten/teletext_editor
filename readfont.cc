@@ -448,7 +448,7 @@ class MainUI: public Fl_Window
 	Fl_Menu_Item menus[13]=
 	{
 	  {"&File",0,0,0,FL_SUBMENU,0,0,0,0},
-		{"&Open",   FL_ALT+'o' ,                       0, 0, FL_MENU_INACTIVE,0,0,0,0},
+		{"&Open",   FL_ALT+'o' ,   open_callback_s, this, 0,0,0,0,0},
 		{"&Save",   FL_CTRL+'s',save_callback_s,    this, 0, 0, 0, 0, 0},
 		{"Save &as",          0,save_as_callback_s, this, 0, 0, 0, 0, 0},
 		{"Save a &copy",          0,save_a_copy_callback_s, this, 0, 0, 0, 0, 0},
@@ -521,7 +521,7 @@ class MainUI: public Fl_Window
 			vdu->redraw();
 		}
 	}
-		
+
 	void redo()
 	{
 		if(!redo_buffer.empty())
@@ -661,13 +661,18 @@ class MainUI: public Fl_Window
 		return cursor_y_sixel/3;
 	}
 
+	////////////////////////////////////////////////////////////////////////////////
+	//
+	// Stuff relating to getting and setting characters and sixels
+	//
+
 	enum class Set
 	{
 		Off = 0,
 		On  = 1,
 		Toggle = 2
 	};
-	
+
 	byte& crnt()
 	{
 		return  buffer[yc()][xc()];
@@ -730,12 +735,12 @@ class MainUI: public Fl_Window
 		return end;
 	}
 
-	struct SaveData{
-		MainUI* ui;
-		string filename;
-		bool remember_filename;
-	};
-
+	
+	////////////////////////////////////////////////////////////////////////////////
+	//
+	// Functions relating to saving.
+	//
+	// this is surprisingly messy
 	void actually_save(const string& name, bool remember)
 	{
 		ofstream out(name);
@@ -744,7 +749,7 @@ class MainUI: public Fl_Window
 		if(!out.good())
 		{
 			err = "Error saving to \"" + name + "\": " + strerror(errno);	
-			fl_choice(err.c_str(), "Horsefeathers!", "", "");	
+			fl_choice(err.c_str(), "Horsefeathers!", "Gosh darn it!", ":(");	
 		}
 		else if(remember)
 		{
@@ -805,7 +810,60 @@ class MainUI: public Fl_Window
 		if(!w->visible())
 			((MainUI*)ui)->actually_save(w->value(), false);
 	}
+	
+	////////////////////////////////////////////////////////////////////////////////
+	//
+	// Loading (much cleaner)
+	//
+	//
+	void load(const string& name)
+	{
+		ifstream in(name);
 
+		Image<byte> tmp(buffer.size());
+		in.read(reinterpret_cast<char*>(tmp.data()), buffer.size().area());
+		
+		if(!in.good())
+		{
+			err = "Error reading from\"" + name + "\": " + strerror(errno);	
+			fl_choice(err.c_str(), "Horsefeathers!", "Gosh darn it!", ":(");	
+		}
+		else
+		{
+			save_name = name;
+			label(save_name.c_str());
+			checkpoint();
+			buffer=tmp;
+			process_checkpoint();
+		}
+	}
+
+	static void open_callback_s(Fl_Widget*, void * ui)
+	{
+		static_cast<MainUI*>(ui)->open_callback();
+	}
+	void open_callback()
+	{
+		Fl_File_Chooser* file = new Fl_File_Chooser(".", "Text (*.txt)\tAll files (*)", Fl_File_Chooser::SINGLE, "Open");
+		file->callback(open_dialog_callback_s, this);
+		file->show();
+	}
+	static void open_dialog_callback_s(Fl_File_Chooser* w, void * ui)
+	{
+		if(!w->visible())
+			((MainUI*)ui)->load(w->value());
+	}
+	
+
+
+
+	////////////////////////////////////////////////////////////////////////////////
+	//
+	// Main event handler
+	//
+	
+	//Should probably write this as a bunch of support functions and
+	//calls to those functions, so it can be scripted easily.
 
 	int handle(int e) override
 	{
@@ -1138,9 +1196,13 @@ void VDUDisplay::draw()
 }	
 
 
-int main()
+int main(int argc, char** argv)
 {
 	MainUI m;
+		
+	if(argc >= 2)
+		m.load(argv[1]);
+	
 	Fl::run();
 
 	Renderer ren;
