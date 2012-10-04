@@ -440,6 +440,12 @@ class VDUDisplay: public Fl_Window
 
 class MainUI: public Fl_Window
 {
+	enum class Mode
+	{
+		Character,
+		Graphics,
+		Text
+	};
 
 	Renderer ren;
 	const ImageRef screen_size;
@@ -452,11 +458,14 @@ class MainUI: public Fl_Window
 	Image<byte> buffer;
 	int cursor_x_sixel=4;
 	int cursor_y_sixel=6;
-	bool graphics_cursor=true;
+
+	Mode mode = Mode::Character;
 	bool cursor_blink_on=true;
 	double cursor_blink_time=.2;
 	bool show_control=1;
 	bool checkpoint_issued=0;
+
+	string save_name;
 
 	vector<Image<byte>> history, redo_buffer;
 	
@@ -570,7 +579,7 @@ class MainUI: public Fl_Window
 		resizable(group_B); //Make group B the fully resizable widget
 
 		buffer.resize(ImageRef(ren.w, ren.h));
-		buffer.fill('a');
+		buffer.fill(' ');
 		show();
 
 		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
@@ -689,9 +698,49 @@ class MainUI: public Fl_Window
 				break;
 		return end;
 	}
+/*
+	struct SaveData{
+		MainUI* ui;
+		string filename;
+		bool remember_filename;
+	};
+
+	void actually_save(const string& name, bool remember)
+	{
+		ofstream out(name);
+		out.write(buffer.data(), buffer.size().area());
+		
+		if(!out.good())
+		{
+			string
+		}
+	}
+
+	void save_callback()
+	{
+		if(save_name == "")
+		{
+			Fl_File_Chooser* file = new Fl_File_Chooser(".", "Text (*.txt)\tAll files (*)", Fl_File_Chooser::CREATE, "Save as...");
+			file->callback(save_dialog_callback_s, this);
+			file->show();
+		}
+		else
+		{
+			actually_save(save_name, true);
+		}
+	}
+
+	static void save_dialog_callback_s(Fl_File_Chooser* w, void * ui)
+	{
+		if(!w->visible())
+			((CricketUI*)ui)->actually_save(w->value());
+	}
+*/
+
 
 	int handle(int e) override
 	{
+
 		if(e == FL_KEYBOARD)
 		{	
 			int k = Fl::event_key();
@@ -700,7 +749,7 @@ class MainUI: public Fl_Window
 			//Decide whether to move in sixels or characters
 			int dx=1;
 			int dy=1;
-			if(!graphics_cursor)
+			if(mode != Mode::Graphics)
 			{
 				dx=2;
 				dy=3;
@@ -714,10 +763,26 @@ class MainUI: public Fl_Window
 				set_y(cursor_y_sixel-dy);
 			else if(k == FL_Down)
 				set_y(cursor_y_sixel+dy);
+			else if(k == FL_Home)
+				set_x(0);
+			else if(k == FL_End)
+				set_x(80);
+			else if(k >= 32 && k <= 127 && mode == Mode::Text && (Fl::event_state()& (FL_CTRL|FL_ALT))==0)
+			{
+				crnt() = Fl::event_text()[0];
+				advance();
+			}
+			else if(k >= 32 && k <= 127 && Fl::event_state(FL_ALT) && Fl::event_state(FL_CTRL))
+			{
+				//Alt + key inserts a literal character
+				checkpoint();
+				crnt() = Fl::event_text()[0];
+				advance();
+			}
 			else if(k == ' ') //Blank current element
 			{
 
-				if(graphics_cursor)
+				if(mode == Mode::Graphics)
 				{
 					if(is_graphic())
 					{
@@ -733,7 +798,7 @@ class MainUI: public Fl_Window
 					advance();
 				}
 			}
-			else if(k == '.' && graphics_cursor) //Fill current sixel
+			else if(k == '.' && mode == Mode::Graphics) //Fill current sixel
 			{
 				if(is_graphic())
 				{
@@ -785,7 +850,7 @@ class MainUI: public Fl_Window
 			else if(k == FL_Insert && !Fl::event_state(FL_SHIFT))
 			{
 				//Insert an element and shift thr row
-				if(graphics_cursor)
+				if(mode == Mode::Graphics)
 				{
 					
 					if(is_graphic())
@@ -832,24 +897,35 @@ class MainUI: public Fl_Window
 				for(int x=0; x < ren.w; x++)
 					buffer[ren.h-1][x] = 32;
 			}
-			else if(k >= 32 && k <= 127 && Fl::event_state(FL_ALT))
-			{
-				//Alt + key inserts a literal character
-				checkpoint();
-				crnt() = Fl::event_text()[0];
-				advance();
-			}
 			else if(k == 'g' && Fl::event_state(FL_SHIFT))
 			{
 				//Switch between graphics mode and regular mode
-				graphics_cursor^=true;
+				if(mode != Mode::Graphics)
+					mode = Mode::Graphics;
+				else
+					mode = Mode::Character;
+				cursor_change();
+			}
+			else if(k == 'g' && Fl::event_state(FL_CTRL))
+			{
+				mode = Mode::Graphics;
+				cursor_change();
+			}
+			else if(k == 'c' && Fl::event_state(FL_CTRL))
+			{
+				mode = Mode::Character;
+				cursor_change();
+			}
+			else if(k == 't' && Fl::event_state(FL_CTRL))
+			{
+				mode = Mode::Text;
 				cursor_change();
 			}
 			else if( (k == 'x' || k == FL_Delete) && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
 			{
 				checkpoint();
 				
-				if(graphics_cursor)
+				if(mode == Mode::Graphics)
 				{
 					if(is_graphic())
 					{
@@ -887,7 +963,7 @@ class MainUI: public Fl_Window
 				else if(k == 'w')
 				  	c = 7;	
 				
-				if(graphics_cursor)
+				if(mode == Mode::Graphics)
 					c += 16;
 
 				checkpoint();
@@ -939,8 +1015,13 @@ void VDUDisplay::draw()
 	if(ui.cursor_blink_on)
 	{
 		ImageRef tl, size;
-		if(ui.graphics_cursor)
+		if(ui.mode == MainUI::Mode::Graphics)
 			tie(tl,size) = ui.ren.sixel_area(ui.cursor_x_sixel, ui.cursor_y_sixel);
+		else if(ui.mode == MainUI::Mode::Text)
+		{
+			tie(tl,size) = ui.ren.char_area_under_sixel(ui.cursor_x_sixel, ui.cursor_y_sixel);
+			size.x = 4;
+		}	
 		else
 			tie(tl,size) = ui.ren.char_area_under_sixel(ui.cursor_x_sixel, ui.cursor_y_sixel);
 		

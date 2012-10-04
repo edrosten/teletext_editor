@@ -3,8 +3,11 @@ Keys:
 
 Any mode
 --------
-	G         - Toggle graphics mode
-	Alt+Key   - Insert literal (shift gives shifted version. Caps works too)
+	G         - Toggle between graphics and character mode
+	^G        - Graphics mode
+	^C        - Character mode
+	^T        - Text mode
+	Alt+^<Key>- Put character in cell
 
 	90
 	op        - Toggle sixel in specific position
@@ -19,9 +22,11 @@ Any mode
 
 	^Z        - undo
 	^Y        - redo
+	Home      - Beginning of line
+	End       - End of line
 
-Text mode
----------
+Character mode
+--------------
 
 	Insert    - Insert character under cursor
 	Shift+Ins - Insert blank row
@@ -31,18 +36,24 @@ Text mode
 	Delete    - Delete character under cursor
 
 	Shift+Del - Remove row
-	Space     - Clear space
-	f         - Insert block
+	Space     - Blank out cell
+	f         - Put block in cell
+	<Arrow>   - Move by one cell
 
 Graphics mode
 -------------
 	rgbcmyw   - Set graphics colour
 	Space     - Clear sixel
 	.         - Set sixel
-
     Delete    - Erase sixel under cursor until next non graphic
 	Insert    - Insert sixel under cursor until next non graphic
-	f         - Fill all sixels 
+	f         - Fill all sixels in cell
+	<Arrow>   - Move by one sixel
+
+Text Mode
+---------
+    <key>     - Put character in cell
+	<Arrow>   - Move by one cell
 
 
 TODO:
@@ -51,17 +62,6 @@ Any mode
 ---------
 
 
-Home      - Beginning of line
-End       - End of line
 Shidt+Del - Delete to end of line
 Shidt+Bksp- Delete to beginning of line
 
-
-Text mode
----------
-
-
-	^T        - Toggle literal text mode.
-
-Graphics mode
--------------
