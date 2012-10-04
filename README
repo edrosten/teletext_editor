@@ -4,7 +4,6 @@ Keys:
 Any mode
 --------
 	G         - Toggle graphics mode
-	rgbcmyw   - Set colour (text/graphics depends on mode)
 	Alt+Key   - Insert literal (shift gives shifted version. Caps works too)
 
 	90
@@ -25,15 +24,19 @@ Text mode
 ---------
 
 	Insert    - Insert character under cursor
+	Shift+Ins - Insert blank row
+	rgbcmyw   - Set text colour
 
 	x
 	Delete    - Delete character under cursor
 
+	Shift+Del - Remove row
 	Space     - Clear space
 	f         - Insert block
 
 Graphics mode
 -------------
+	rgbcmyw   - Set graphics colour
 	Space     - Clear sixel
 	.         - Set sixel
 
@@ -57,8 +60,6 @@ Shidt+Bksp- Delete to beginning of line
 Text mode
 ---------
 
-	Shift+Ins - Insert blank row
-	Shift+Del - Remove row
 
 	^T        - Toggle literal text mode.
 

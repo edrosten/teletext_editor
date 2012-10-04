@@ -782,7 +782,7 @@ class MainUI: public Fl_Window
 			{
 				redo();
 			}
-			else if(k == FL_Insert)
+			else if(k == FL_Insert && !Fl::event_state(FL_SHIFT))
 			{
 				//Insert an element and shift thr row
 				if(graphics_cursor)
@@ -807,6 +807,30 @@ class MainUI: public Fl_Window
 					crnt() = 32;
 				}
 				
+			}
+			else if(k == FL_Insert && Fl::event_state(FL_SHIFT))
+			{
+				//Insert row
+				checkpoint();
+				
+				for(int y=ren.h-1; y > yc(); y--)
+					for(int x=0; x < ren.w; x++)
+						buffer[y][x] = buffer[y-1][x];
+
+				for(int x=0; x < ren.w; x++)
+					buffer[yc()][x] = 32;
+			}
+			else if(k == FL_Delete && Fl::event_state(FL_SHIFT))
+			{
+				//Delete row
+				checkpoint();
+				
+				for(int y=yc(); y < ren.h-1; y++)
+					for(int x=0; x < ren.w; x++)
+						buffer[y][x] = buffer[y+1][x];
+
+				for(int x=0; x < ren.w; x++)
+					buffer[ren.h-1][x] = 32;
 			}
 			else if(k >= 32 && k <= 127 && Fl::event_state(FL_ALT))
 			{
