@@ -41,6 +41,7 @@ Character mode
 	Space     - Blank out cell
 	f         - Put block in cell
 	<Arrow>   - Move by one cell
+	z         - Put zero in cell
 
 Graphics mode
 -------------
@@ -51,6 +52,7 @@ Graphics mode
 	Insert    - Insert sixel under cursor until next non graphic
 	f         - Fill all sixels in cell
 	<Arrow>   - Move by one sixel
+	z         - Put zero in cell (zero is not technically a graphic)
 
 Text Mode
 ---------

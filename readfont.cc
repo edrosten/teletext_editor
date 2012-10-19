@@ -957,6 +957,10 @@ class MainUI: public Fl_Window
 				else
 					crnt() = 13;
 			}
+			else if(k == 'z' && ( Fl::event_state()& (FL_ALT|FL_CTRL))==0)
+			{
+				crnt()=0;
+			}
 			else if(k == 'h' && ( Fl::event_state()& (FL_ALT|FL_CTRL))==0)
 			{
 				//Release/hold graphics
@@ -1198,35 +1202,20 @@ void VDUDisplay::draw()
 
 int main(int argc, char** argv)
 {
-	MainUI m;
-		
-	if(argc >= 2)
-		m.load(argv[1]);
-	
-	Fl::run();
+	try{
 
-	Renderer ren;
-
-	Image<byte> text(ImageRef(ren.w,ren.h));
-
-
-	//Read every second character except control ones,
-	//to that it renders OK in vim with ^M for a <13>
-	text.fill(0);
-	for(int r=0; r < ren.w*ren.h; r++)
-	{
-		int c = cin.get();
-		if(r % ren.w == 0 && c == '\n')
-			c=cin.get();
+		MainUI m;
 			
-		if(c>= 32)
-			c=cin.get();
+		if(argc >= 2)
+			m.load(argv[1]);
 		
-		if(!cin.good())
-			break;
-		text.data()[r] = c;
+		Fl::run();
 	}
-
+	catch(Exceptions::All e)
+	{
+		cerr << "Error: " << e.what << endl;
+		return 	1;
+	}
 
 	//img_save(ren.render(text), cout,ImageType::PNM);
 

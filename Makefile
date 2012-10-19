@@ -2,6 +2,10 @@ CXX=g++-4.8-svn
 CXXFLAGS=-std=c++0x -D_GLIBCXX_DEBUG -g -ggdb -Wall -Wextra 
 LDFLAGS=-lcvd_debug -lfltk -lfltk_gl
 
+CXX=g++
+CXXFLAGS=-std=c++0x -O3 -g -ggdb -Wall -Wextra 
+LDFLAGS=-lcvd -lfltk -lfltk_gl
+
 all:bitmaps readfont
 
 
@@ -17,4 +21,4 @@ readfont: readfont.o
 	$(CXX) -o $@ $< $(LDFLAGS)
 
 resources/%.png:resources/%.xbm
-	convert $< $@
+	xbmtopbm $< | pnmdepth 255 | pnmtopng >  $@
