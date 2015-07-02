@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <array>
 #include <utility>
 #include <tuple>
@@ -10,22 +11,20 @@
 #include <cvd/gl_helpers.h>
 #include <cvd/videodisplay.h>
 
-#include <tag/printf.h>
 
 #include <FL/Fl.H>
-#include <Fl/Fl_Menu_Bar.H>
-#include <Fl/Fl_Menu_Item.H>
-#include <Fl/Fl_Window.H>
-#include <Fl/Fl_Pack.H>
-#include <Fl/Fl_Box.H>
-#include <Fl/Fl_Tile.H>
-#include <Fl/Fl_File_Chooser.H>
-#include <Fl/Fl_Text_Editor.H>
-#include <Fl/fl_draw.H>
-#include <Fl/fl_ask.H>
+#include <FL/Fl_Menu_Bar.H>
+#include <FL/Fl_Menu_Item.H>
+#include <FL/Fl_Window.H>
+#include <FL/Fl_Pack.H>
+#include <FL/Fl_Box.H>
+#include <FL/Fl_Tile.H>
+#include <FL/Fl_File_Chooser.H>
+#include <FL/Fl_Text_Editor.H>
+#include <FL/fl_draw.H>
+#include <FL/fl_ask.H>
 
 using namespace std;
-using namespace tag;
 using namespace CVD;
 
 class FontSet
@@ -232,7 +231,7 @@ class Renderer
 	static const int w=40;
 	static const int h=25;
 
-	const Image<Rgb<byte>>& render(const Image<byte> text, bool control);
+	const Image<Rgb<byte>>& render(const Image<byte> text, bool control, bool flash_on);
 	const Image<Rgb<byte>>& get_rendered()
 	{
 		return screen;
@@ -260,7 +259,7 @@ class Renderer
 	}
 };
 
-const Image<Rgb<byte>>& Renderer::render(const Image<byte> text, bool control)
+const Image<Rgb<byte>>& Renderer::render(const Image<byte> text, bool control, bool flash_on)
 {
 	if(text.size() != ImageRef(w, h))
 	{
@@ -278,6 +277,7 @@ const Image<Rgb<byte>>& Renderer::render(const Image<byte> text, bool control)
 		bool graphics_on=false;
 		bool double_height=false;
 		bool next_is_double_height=false;
+		bool flash=false;
 		Rgb<byte> fg(255,255,255);
 		Rgb<byte> bg(0,0,0);
 		int last_graphic=0;
@@ -300,6 +300,10 @@ const Image<Rgb<byte>>& Renderer::render(const Image<byte> text, bool control)
 					fg.blue  = (bool)(c&4) * 255;
 					graphics_on=false;
 				}
+				else if(c == 8)
+					flash=true;
+				else if(c == 9)
+					flash = false;
 				else if(c == 12)
 					double_height=false;
 				else if(c == 13)
@@ -369,6 +373,11 @@ const Image<Rgb<byte>>& Renderer::render(const Image<byte> text, bool control)
 			//The last graphic drawn counts even if it isn't displayed, apparently.
 			if(graphics_on && (c & 32))
 				last_graphic=c;
+
+			//Finally implement the blinking
+			//spec defines blinked off to be a space
+			if(flash && !flash_on)
+				c = ' ';
 
 			if(no_render)
 				glyph = &f.get_blank();
@@ -478,6 +487,8 @@ class MainUI: public Fl_Window
 	Mode mode = Mode::Character;
 	bool cursor_blink_on=true;
 	double cursor_blink_time=.2;
+	double text_blink_time=.5;
+	bool text_blink_on=true;
 	bool show_control=1;
 	bool checkpoint_issued=0;
 
@@ -614,11 +625,12 @@ class MainUI: public Fl_Window
 		show();
 
 		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
+		Fl::add_timeout(text_blink_time, text_flash_callback, this);
 	}
 
 	const Image<Rgb<byte>> get_rendered_text(int)
 	{
-		return ren.render(buffer, codes_toggle->value());
+		return ren.render(buffer, codes_toggle->value(), text_blink_on);
 	}
 
 	static void cursor_callback(void* d)
@@ -635,6 +647,15 @@ class MainUI: public Fl_Window
 		Fl::remove_timeout(cursor_callback, this);
 		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
 		vdu->redraw();
+	}
+
+
+	static void text_flash_callback(void* d)
+	{
+		MainUI* m = static_cast<MainUI*>(d);
+		m->text_blink_on ^= true;
+		m->vdu->redraw();
+		Fl::repeat_timeout(m->text_blink_time, text_flash_callback, d);
 	}
 
 	void set_x(int x)
@@ -1100,6 +1121,16 @@ class MainUI: public Fl_Window
 				checkpoint();
 				crnt()=c;
 
+			}
+			else if( k == 'b' && Fl::event_state() & FL_SHIFT)
+			{
+				checkpoint();
+				crnt() = 8;
+			}
+			else if( k == 's' && Fl::event_state() & FL_SHIFT)
+			{
+				checkpoint();
+				crnt() = 9;
 			}
 			else if( (k == '9' || k == '0' || k == 'o' || k=='p' || k == 'l' || k == ';') && ( Fl::event_state()& (FL_SHIFT|FL_ALT|FL_CTRL))==0)
 			{

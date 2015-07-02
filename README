@@ -13,6 +13,8 @@ Any mode
 	op        - Toggle sixel in specific position
 	l;
 
+	B         - Blink/flash
+	S         - Steady
 	n         - Set new background 
 	N         - Set black background 
 	d         - double height
