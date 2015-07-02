@@ -454,7 +454,7 @@ class MainUI: public Fl_Window
 		Text
 	};
 
-	Fl_Menu_Item menus[13]=
+	Fl_Menu_Item menus[14]=
 	{
 	  {"&File",0,0,0,FL_SUBMENU,0,0,0,0},
 		{"&Open",   FL_ALT+'o' ,   open_callback_s, this, 0,0,0,0,0},
@@ -467,6 +467,7 @@ class MainUI: public Fl_Window
 	  {0,0,0,0,0,0,0,0,0},
 	  {"Codes", FL_F+1, menu_toggle_callback_s, this, FL_MENU_TOGGLE + FL_MENU_VALUE, 0,0,0,0},
 	  {"Grid",  FL_F+2, menu_toggle_callback_s, this, FL_MENU_TOGGLE                , 0,0,0,0},
+	  {"Blink",  FL_F+3, menu_toggle_callback_s, this, FL_MENU_TOGGLE                , 0,0,0,0},
 	  {0,0,0,0,0,0,0,0,0},
 	};
 
@@ -475,7 +476,7 @@ class MainUI: public Fl_Window
 	const ImageRef screen_size;
 	Fl_Menu_Bar* menu;
 	Fl_Group* group_B;
-	const Fl_Menu_Item* codes_toggle, *grid_toggle;
+	const Fl_Menu_Item* codes_toggle, *grid_toggle,*blink_toggle;
 	VDUDisplay* vdu;
 
 	static const int menu_height=30;
@@ -604,9 +605,11 @@ class MainUI: public Fl_Window
 			menu->menu(menus);
 			codes_toggle=menu->find_item("Codes");
 			grid_toggle=menu->find_item("Grid");
+			blink_toggle=menu->find_item("Blink");
 
 			assert(codes_toggle != NULL);
 			assert(grid_toggle != NULL);
+			assert(blink_toggle != NULL);
 
 			group_B = new Fl_Window(0, menu_height, w(), h()-menu_height, "");	
 			group_B->begin();
@@ -630,7 +633,7 @@ class MainUI: public Fl_Window
 
 	const Image<Rgb<byte>> get_rendered_text(int)
 	{
-		return ren.render(buffer, codes_toggle->value(), text_blink_on);
+		return ren.render(buffer, codes_toggle->value(), text_blink_on || !blink_toggle->value());
 	}
 
 	static void cursor_callback(void* d)
@@ -1122,12 +1125,12 @@ class MainUI: public Fl_Window
 				crnt()=c;
 
 			}
-			else if( k == 'b' && Fl::event_state() & FL_SHIFT)
+			else if( k == 'b' && Fl::event_state(FL_SHIFT))
 			{
 				checkpoint();
 				crnt() = 8;
 			}
-			else if( k == 's' && Fl::event_state() & FL_SHIFT)
+			else if( k == 's' && Fl::event_state(FL_SHIFT))
 			{
 				checkpoint();
 				crnt() = 9;
