@@ -1,5 +1,24 @@
-Keys:
+This program lets you edit teletext.
 
+It assumes that screens are 40x25 only. Given that teletext is thoroughly
+obsolete, I don't see the size changing any time soon. The editor is fairly
+self explanatory except for the keys (below). The editing process will be
+very confusing if you don't understand teletext, but I'd be surprised if
+you were reading this if you aren't.
+
+Currently conceal/reveal and boxing isn't supported. 
+
+For those of you coming from BBC Micro land, this is proper teletext support
+not Mode 7 support. Mode 7 does mangling on characters in the range 0-127, such
+as by interpreting control characters and putting £ in the "right" place. 
+
+This is pure unmangled teletext like you'd get if you send characters with the 
+top bit set, as in PRINT CHR$(141).
+
+
+
+Keys
+====
 
 Any mode
 --------
