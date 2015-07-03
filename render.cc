@@ -5,6 +5,10 @@
 #include <fstream>
 #include <sstream>
 #include <cvd/image_io.h>
+
+
+#include "control_chars.h"
+
 using namespace std;
 using namespace CVD;
 
@@ -105,7 +109,7 @@ FontSet::FontSet(string name)
 	//set. This is not the case if screen memory is written directly.
 		
 	//In fact, the BBC terminal driver gently mangles a number of
-	//things below 128, including the britigh pound and # signs.
+	//things below 128, including the british pound and # signs.
 	
 	//This class reflects true telext (i.e. what the SAA chip does
 	//if youwrite to screen memory).

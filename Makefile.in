@@ -12,10 +12,19 @@ PNGS=$(subst xbm,png,$(XBMS))
 bitmaps:$(PNGS)
 
 clean:
-	rm -f *.o editor resources/*.png
+	rm -f *.o editor resources/*.png control_chars.h
 
 editor: editor.o render.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 resources/%.png:resources/%.xbm
 	xbmtopbm $< | pnmtopng >  $@
+
+render.o: 
+
+
+control_chars.h:bitmaps
+	echo "const char control_chars[]={" > control_chars.h
+	cat resources/*.png | od -vAn -td1 | sed -e's/\([0-9]\)[[:space:]]\+/\1,/g' -e's/$$/,/' >> control_chars.h
+	echo "};" >> control_chars.h
+	
