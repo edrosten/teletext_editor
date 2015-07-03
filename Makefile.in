@@ -2,7 +2,7 @@ CXX=@CXX@
 CXXFLAGS=@CXXFLAGS@
 LDFLAGS=@LDFLAGS@ @LIBS@
 
-all:bitmaps readfont
+all:bitmaps  editor
 
 .PHONY: bitmaps
 
@@ -11,8 +11,11 @@ PNGS=$(subst xbm,png,$(XBMS))
 
 bitmaps:$(PNGS)
 
-readfont: readfont.o 
-	$(CXX) -o $@ $< $(LDFLAGS)
+clean:
+	rm -f *.o editor resources/*.png
+
+editor: editor.o render.o
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 resources/%.png:resources/%.xbm
-	xbmtopbm $< | pnmdepth 255 | pnmtopng >  $@
+	xbmtopbm $< | pnmtopng >  $@
