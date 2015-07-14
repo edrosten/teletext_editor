@@ -27,11 +27,6 @@ Any mode
 	^C        - Character mode
 	^T        - Text mode
 	Alt+^<Key>- Put character in cell
-
-	90
-	op        - Toggle sixel in specific position
-	l;
-
 	B         - Blink/flash
 	S         - Steady
 	n         - Set new background 
@@ -71,7 +66,8 @@ Graphics mode
 	.         - Set sixel
     Delete    - Erase sixel under cursor until next non graphic
 	Insert    - Insert sixel under cursor until next non graphic
-	f         - Fill all sixels in cell
+	f         - Fill all sixels in cell / replace cell with full graphics block
+	F         - Empty all sixels in a cell / replace cell with empty graphics block
 	<Arrow>   - Move by one sixel
 	z         - Put zero in cell (zero is not technically a graphic)
 

@@ -230,6 +230,8 @@ class MainUI: public Fl_Window
 
 		Fl::add_timeout(cursor_blink_time, cursor_callback, this);
 		Fl::add_timeout(text_blink_time, text_flash_callback, this);
+
+		callback(my_callback_s);
 	}
 
 	const Image<Rgb<byte>> get_rendered_text(int)
@@ -479,7 +481,12 @@ class MainUI: public Fl_Window
 			((MainUI*)ui)->load(w->value());
 	}
 	
-
+	static void my_callback_s(Fl_Widget*, void*) 
+	{   
+		if (Fl::event()==FL_SHORTCUT && Fl::event_key()==FL_Escape)     
+			return; // ignore Escape  
+		exit(0);
+	}
 
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -528,7 +535,13 @@ class MainUI: public Fl_Window
 			{
 				//Alt + key inserts a literal character
 				checkpoint();
-				crnt() = Fl::event_text()[0];
+				if(Fl::event_state(FL_SHIFT))
+				{
+					if(isalpha(k))
+						k = toupper(k);
+				}
+				else
+					crnt() = k;
 				advance();
 			}
 			else if(k == ' ') //Blank current element
@@ -563,6 +576,14 @@ class MainUI: public Fl_Window
 			{
 				checkpoint();
 				crnt() = 127;
+			}
+			else if(k == 'f' && Fl::event_state(FL_SHIFT)) //Fill block
+			{
+				if(mode == Mode::Graphics)
+				{
+					checkpoint();
+					crnt() = 32;
+				}
 			}
 			else if(k == 'n' && ( Fl::event_state()& (FL_ALT|FL_CTRL))==0)
 			{
