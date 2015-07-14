@@ -7,7 +7,8 @@
 #include <cvd/image_io.h>
 
 
-#include "control_chars.h"
+extern const std::string control_chars();
+extern const std::string teletext_fnt();
 
 using namespace std;
 using namespace CVD;
@@ -63,7 +64,7 @@ class FontSet
 	};
 
 
-	FontSet(string filename);
+	FontSet();
 	const Image<bool>& get_glyph(int i, Mode m, Height h) const
 	{
 		return glyphs[i][m][h];
@@ -75,23 +76,19 @@ class FontSet
 	}
 };
 
-FontSet::FontSet(string name)
+
+FontSet::FontSet()
 {
 	blank.resize(size());
 	blank.zero();
-	
-	for(int i=0; i < 32; i++)
-	{
-		ostringstream os;
-		os << "resources/" << setfill('0') << setw(4) << i << ".png";
-		
-		cerr  << os.str() << endl;
-		
-		control_glyphs.push_back(img_load(os.str()));
-	}
 
-	ifstream fi(name);
-	
+	istringstream all(control_chars());
+
+	for(int i=0; i < 32; i++)
+		control_glyphs.push_back(img_load(all));
+
+	istringstream fi(teletext_fnt());
+
 	//Teletext has 5 character sets:
 	//Normal
 	//Double height upper
@@ -228,7 +225,7 @@ pair<ImageRef,ImageRef> Renderer::sixel_area(int x, int y) const
 }
 
 Renderer::Renderer()
-:f(make_unique<FontSet>("teletext.fnt"))
+:f(make_unique<FontSet>())
 {
 	screen.resize(CVD::ImageRef(w,h).dot_times(f->size()));
 }
