@@ -2,25 +2,38 @@ CXX=@CXX@
 CXXFLAGS=@CXXFLAGS@
 LDFLAGS=@LDFLAGS@ @LIBS@
 
-all:bitmaps  editor
+all:editor
 
 .PHONY: bitmaps
 
 XBMS=$(shell ls resources/*.xbm)
 PNGS=$(subst xbm,png,$(XBMS))
+PGMS=$(subst xbm,pgm,$(XBMS))
 
 bitmaps:$(PNGS)
 
 clean:
-	rm -f *.o editor resources/*.png control_chars.h
+	rm -f *.o editor resources/*.png control_chars.h resources/*.pgm
 
-editor: editor.o render.o
+editor: editor.o render.o control_chars.o teletext_fnt.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 resources/%.png:resources/%.xbm
 	xbmtopbm $< | pnmtopng >  $@
 
-render.o: 
+
+resources/%.pgm:resources/%.xbm
+	xbmtopbm $< | pnmdepth 255 >  $@
+
+file_to_C: file_to_C.o
+	$(CXX) -o $@ $^ $(LDFLAGS)
+
+control_chars.cc:$(PGMS) file_to_C
+	cat $(PGMS) | ./file_to_C control_chars > $@
+
+
+teletext_fnt.cc:teletext.fnt file_to_C
+	cat teletext.fnt | ./file_to_C teletext_fnt > $@
 
 
 control_chars.h:bitmaps
