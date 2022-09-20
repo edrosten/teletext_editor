@@ -101,7 +101,7 @@ class MainUI: public Fl_Window
 	
 	void checkpoint()
 	{
-		history.push_back(buffer.copy_from_me());
+		history.push_back(buffer);
 		checkpoint_issued=1;
 		vdu->redraw();
 	}
@@ -777,7 +777,7 @@ void VDUDisplay::draw()
 {
 	const Image<Rgb<byte>>& i = ui.get_rendered_text(0);
 	
-	Image<Rgb<byte> > j = i.copy_from_me();
+	Image<Rgb<byte> > j = i;
 	if(ui.cursor_blink_on)
 	{
 		ImageRef tl, size;
@@ -848,7 +848,7 @@ int main(int argc, char** argv)
 	}
 	catch(Exceptions::All e)
 	{
-		cerr << "Error: " << e.what << endl;
+		cerr << "Error: " << e.what() << endl;
 		return 	1;
 	}
 
